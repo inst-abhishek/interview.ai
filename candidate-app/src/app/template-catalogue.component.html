@@ -2,23 +2,32 @@
   <header class="catalogue-heading">
     <div>
       <span class="eyebrow">VERSIONED ASSESSMENTS</span>
-      <h2 id="catalogue-title">Java assessment preview</h2>
-      <p>Choose an assessment or inspect its technical content before approval.</p>
+      <h2 id="catalogue-title">{{activeTemplate?'Assessment template details':role==='reviewer'?'Template review queue':'Choose an assessment'}}</h2>
+      <p>{{activeTemplate?'Inspect this version before validation or assignment.':'Search by title, role, skill or version. Open one assessment at a time.'}}</p>
     </div>
-    <button type="button" class="secondary" (click)="load()" [disabled]="busy" aria-label="Refresh assessment catalogue">Refresh catalogue</button>
+    <button *ngIf="!activeTemplate" type="button" class="secondary" (click)="load()" [disabled]="busy" aria-label="Refresh template queue">Refresh queue</button><button *ngIf="activeTemplate" type="button" class="secondary" (click)="backToQueue()" [disabled]="busy">Back to template queue</button>
   </header>
 
   <p *ngIf="error" class="notice" role="alert">{{error}}</p>
   <p *ngIf="notice" class="review-success" role="status">{{notice}}</p>
-  <p *ngIf="!templates.length&&!busy" class="empty-catalogue">Start the "Preview: Java assessment template" launch option to use the isolated catalogue.</p>
+  <p *ngIf="!enabled&&!busy" class="empty-catalogue">Start the "Preview: Java assessment template" launch option to use the isolated catalogue.</p>
 
-  <article class="template-card" *ngFor="let t of templates">
+
+  <ng-container *ngIf="!activeTemplate&&enabled">
+    <div class="template-counts" aria-label="Template counts"><button type="button" (click)="filterStatus('ALL')" [disabled]="busy"><strong>{{allCount}}</strong><span>Total</span></button><button type="button" (click)="filterStatus('PENDING')" [disabled]="busy"><strong>{{pendingCount}}</strong><span>Needs approval</span></button><button type="button" (click)="filterStatus('APPROVED')" [disabled]="busy"><strong>{{approvedCount}}</strong><span>Approved</span></button><button type="button" (click)="filterStatus('RETIRED')" [disabled]="busy"><strong>{{retiredCount}}</strong><span>Retired</span></button></div>
+    <form class="template-filters" (ngSubmit)="applyFilters()"><label>Search templates<input type="search" name="templateSearch" [(ngModel)]="search" maxlength="200" placeholder="Title, role, skill or version"></label><label>Status<select name="templateStatus" [(ngModel)]="status"><option value="ALL">All statuses</option><option value="PENDING">Needs approval</option><option value="DRAFT">Draft</option><option value="IN_REVIEW">Awaiting review</option><option value="APPROVED">Approved</option><option value="RETIRED">Retired</option></select></label><label>Sort by<select name="templateSort" [(ngModel)]="sort"><option value="UPDATED">Last updated</option><option value="TITLE">Template title</option><option value="VERSION">Version</option></select></label><div class="template-filter-actions"><button type="submit" [disabled]="busy">Apply filters</button><button type="button" class="secondary" (click)="reset()" [disabled]="busy">Reset</button></div></form>
+    <p *ngIf="busy" class="help" role="status">Loading template queue...</p>
+    <div class="template-table" [attr.aria-busy]="busy"><table><thead><tr><th scope="col">Template / role</th><th scope="col">Version</th><th scope="col">Duration</th><th scope="col">Questions</th><th scope="col">Status</th><th scope="col">Last updated</th><th scope="col"><span class="sr-only">Action</span></th></tr></thead><tbody><tr *ngFor="let t of templates"><td><strong>{{displayTitle(t.title)}}</strong><span>{{t.role}}</span><small [title]="t.skills.join(', ')">{{t.skills.join(', ')}}</small></td><td>{{t.version}}</td><td>{{t.durationMinutes}} min</td><td>{{t.questionCount}}</td><td><span class="template-status" [class.approved]="t.status==='APPROVED'">{{statusLabel(t.status)}}</span></td><td>{{t.updatedAt?(t.updatedAt | date:'medium'):'Not recorded'}}</td><td><button type="button" class="secondary" (click)="inspect(t)" [disabled]="busy" [attr.aria-label]="'Open '+t.title+' '+t.version">{{role==='reviewer'?(t.status==='APPROVED'||t.status==='RETIRED'?'View version':'Review template'):'View assessment'}}</button></td></tr></tbody></table><p *ngIf="!templates.length&&!busy" class="empty-catalogue">No templates match these filters.</p></div>
+    <div class="template-pagination"><span role="status">Showing {{first}} - {{last}} of {{total}}</span><label>Per page<select [(ngModel)]="size" (ngModelChange)="applyFilters()" [disabled]="busy"><option [ngValue]="10">10</option><option [ngValue]="25">25</option><option [ngValue]="50">50</option></select></label><div><button type="button" class="secondary" (click)="changePage(page-1)" [disabled]="busy||page===0">Previous</button><span>Page {{page+1}} of {{pages}}</span><button type="button" class="secondary" (click)="changePage(page+1)" [disabled]="busy||page>=pages-1">Next</button></div></div>
+  </ng-container>
+
+  <article class="template-card" *ngIf="activeTemplate as t">
     <div class="template-heading">
       <div>
         <span class="template-version">{{t.version}}</span>
         <h3>{{displayTitle(t.title)}}</h3>
       </div>
-      <span class="template-status" [class.approved]="t.status==='APPROVED'">{{t.status==='APPROVED'?'Approved':'Awaiting approval'}}</span>
+      <span class="template-status" [class.approved]="t.status==='APPROVED'">{{statusLabel(t.status)}}</span>
     </div>
     <p class="template-description">{{t.description}}</p>
     <div class="template-meta" aria-label="Assessment details">
@@ -37,8 +46,8 @@
     </div>
 
     <footer class="template-actions" *ngIf="role==='reviewer'">
-      <button type="button" class="secondary" (click)="inspect(t)" [disabled]="busy">Inspect technical content</button>
-      <button type="button" (click)="approve(t)" [disabled]="busy||!t.runnerEnabled||t.status==='APPROVED'">{{busy?'Validating...':t.status==='APPROVED'?'Assessment approved':'Validate & approve'}}</button>
+      
+      <button type="button" (click)="approve(t)" [disabled]="busy||!t.runnerEnabled||t.status==='APPROVED'||t.status==='RETIRED'">{{busy?'Validating...':t.status==='APPROVED'?'Assessment approved':'Validate & approve'}}</button>
       <span *ngIf="!t.runnerEnabled" class="action-hint">Approval is available after runner setup.</span>
     </footer>
     <footer class="template-actions" *ngIf="role==='recruiter'">
@@ -59,8 +68,8 @@
     </div>
   </form>
 
-  <section *ngIf="definition" class="technical-content">
-    <div class="technical-heading"><div><span class="eyebrow">TECHNICAL CONTENT</span><h3>Review {{definition.version}}</h3></div><button type="button" class="secondary" (click)="definition=undefined">Close content</button></div>
+  <section *ngIf="definition&&activeTemplate" class="technical-content">
+    <div class="technical-heading"><div><span class="eyebrow">TECHNICAL CONTENT</span><h3>Review {{definition.version}}</h3></div><button type="button" class="secondary" (click)="backToQueue()">Back to template queue</button></div>
     <p class="review-instructions">{{definition.reviewerInstructions}}</p>
     <details class="question-detail" *ngFor="let q of definition.items">
       <summary>{{q.kind}} &middot; {{q.id}} &middot; {{q.maxPoints}} points</summary>

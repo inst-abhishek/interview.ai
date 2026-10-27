@@ -4,3 +4,11 @@ CREATE TABLE IF NOT EXISTS coding_runs (id VARCHAR(80) PRIMARY KEY, session_id V
 CREATE INDEX IF NOT EXISTS coding_queue_idx ON coding_runs(state,created_at);
 CREATE TABLE IF NOT EXISTS template_evaluations (session_id VARCHAR(80) PRIMARY KEY REFERENCES sessions(id), state VARCHAR(30) NOT NULL, criteria CLOB NOT NULL, notes CLOB NOT NULL, recommendation VARCHAR(20), reviewer VARCHAR(64), published_at BIGINT);
 ALTER TABLE coding_runs ADD COLUMN IF NOT EXISTS final_key VARCHAR(200) UNIQUE;
+ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS title VARCHAR(300);
+ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS role_name VARCHAR(200);
+ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS skills VARCHAR(4000);
+ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS duration_minutes INT;
+ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS question_count INT;
+ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS updated_at BIGINT;
+CREATE INDEX IF NOT EXISTS template_queue_idx ON assessment_templates(status,updated_at,version);
+ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS description VARCHAR(4000);

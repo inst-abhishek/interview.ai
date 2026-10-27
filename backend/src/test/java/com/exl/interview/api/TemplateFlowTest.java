@@ -67,4 +67,13 @@ class TemplateFlowTest {
   post("/review/sessions/"+a.id(),reviewer,Map.of("score",5,"notes","Arbitrary score","recommendation","SHORTLIST"),400);post("/recruiter/submissions/"+a.id()+"/review",recruiter,Map.of("score",5,"notes","Arbitrary score","recommendation","SHORTLIST"),400);
   assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM reviews WHERE session_id=?",Integer.class,a.id()));
  }
+
+ @Test void templateQueueUsesServerPaginationAndMetadataOnly()throws Exception{
+  String definition=db.queryForObject("SELECT definition FROM assessment_templates WHERE version=?",String.class,VERSION);
+  for(int i=0;i<25;i++){String status=i%3==0?"DRAFT":i%3==1?"APPROVED":"RETIRED";db.update("INSERT INTO assessment_templates (version,status,definition,title,role_name,skills,duration_minutes,question_count,updated_at,description) VALUES (?,?,?,?,?,?,?,?,?,?)",String.format("queue-%02d",i),status,definition,"Role "+i,"Service Engineer","[\"Spring\"]",60,11,(long)i+1,"Queue test");}
+  var first=get("/review/template-queue",reviewer,200);assertEquals(10,first.get("items").size());assertEquals(26,first.get("total").asInt());assertEquals(3,first.get("totalPages").asInt());assertEquals(10,first.get("pendingCount").asInt());assertFalse(first.toString().contains("correctAnswer"));assertFalse(first.toString().contains("hiddenTests"));
+  var last=get("/review/template-queue?page=999",reviewer,200);assertEquals(2,last.get("page").asInt());assertEquals(6,last.get("items").size());assertEquals(8,get("/review/template-queue?status=APPROVED",reviewer,200).get("total").asInt());assertEquals(25,get("/review/template-queue?search=Spring",reviewer,200).get("total").asInt());assertEquals(1,get("/review/template-queue?search=queue-01",reviewer,200).get("total").asInt());assertEquals(0,get("/review/template-queue?search=not-found",reviewer,200).get("total").asInt());
+  get("/review/template-queue?size=10000",reviewer,400);get("/review/template-queue",recruiter,401);assertEquals(10,get("/recruiter/template-queue",recruiter,200).get("items").size());
+ }
+ @Test void retiredTemplateCannotBeApprovedAgain()throws Exception{db.update("UPDATE assessment_templates SET status='RETIRED' WHERE version=?",VERSION);post("/review/templates/"+VERSION+"/approve",reviewer,Map.of(),409);}
 }

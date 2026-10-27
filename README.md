@@ -195,3 +195,11 @@ git switch feature/java-assessment-template
 Run **Preview: Java assessment template** again. Switching code branches does not delete either database. No `git reset --hard`, database deletion, or force-push is needed.
 
 The automated template workflow tests use an isolated in-memory database and a test coding worker. They validate approval gates, hidden-key isolation, deadlines, scoring and publication, not real Docker execution. The Docker reference validation must still pass on the actual machine before the template can be used.
+
+## Separate reviewer workspaces
+
+Reviewer navigation now has two destinations: **Candidate reviews** and **Assessment templates**. Opening templates no longer inserts a catalogue above the candidate queue. Candidate answers, evidence and feedback remain in the selected candidate's detail tabs. Switching sidebar destinations retains candidate context, feedback drafts and list position.
+
+Assessment templates opens a separate queue with title/role/skill/version search, lifecycle filters, updated/title/version sorting, counts and 10/25/50-item server pages. Open one template to inspect it, then use **Back to template queue** to return to the same filters and page. Recruiters use the same bounded catalogue in their Assessment templates tab; answer keys and hidden tests remain restricted to technical review.
+
+The queue uses `/api/review/template-queue` or `/api/recruiter/template-queue` with `page`, `size`, `search`, `status` and `sort`. Only public summary metadata is queried for list rows; complete question definitions are fetched when a technical reviewer opens a version. Old records without update timestamps display **Not recorded**. The current publishing workflow creates DRAFT and APPROVED states; filtering also supports imported/future IN_REVIEW and RETIRED states. No new authoring or retirement workflow is implied. Retired templates cannot be reapproved through the approval endpoint.
