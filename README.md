@@ -1,4 +1,4 @@
-# EXL Interview Platform
+# Interview Platform
 
 A local interview-assessment application with recruiter, candidate and reviewer workspaces. Built with Angular 18, Spring Boot, Java 21 and H2.
 
