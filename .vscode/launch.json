@@ -19,6 +19,19 @@
       "request": "launch",
       "command": "npm.cmd start",
       "cwd": "${workspaceFolder}/candidate-app"
+    },
+    {
+      "type": "node-terminal",
+      "name": "Backend: Java template preview",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "INTERVIEW_INVITATION_CODE": "exldemo",
+        "INTERVIEW_REVIEWER_CODE": "reviewdemo",
+        "INTERVIEW_RECRUITER_SETUP_CODE": "exl-recruiter-setup",
+        "SPRING_PROFILES_ACTIVE": "java-template"
+      },
+      "command": "mvn.cmd spring-boot:run"
     }
   ],
   "compounds": [
@@ -26,6 +39,14 @@
       "name": "Full application (frontend + backend)",
       "configurations": [
         "Backend: Spring Boot",
+        "Frontend: Angular"
+      ],
+      "stopAll": true
+    },
+    {
+      "name": "Preview: Java assessment template",
+      "configurations": [
+        "Backend: Java template preview",
         "Frontend: Angular"
       ],
       "stopAll": true

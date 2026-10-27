@@ -21,12 +21,12 @@ import java.util.*;
 @RestController @RequestMapping("/api")
 @CrossOrigin(origins="http://127.0.0.1:4200")
 public class SessionController {
-  private final JdbcTemplate db; private final ObjectMapper json; private final AssessmentExpiry expiry;
+  private final JdbcTemplate db; private final ObjectMapper json; private final AssessmentExpiry expiry;private final TemplateCatalogue catalogue;
   @Value("${interview.invitation-code:}") private String code;
   @Value("${interview.reviewer-code:}") private String reviewerCode;
   @Value("${interview.duration-seconds:1800}") private long duration;
   @Value("${interview.evidence-retention-days:30}") private long evidenceRetentionDays;
-  public SessionController(JdbcTemplate db,ObjectMapper json,AssessmentExpiry expiry){this.db=db;this.json=json;this.expiry=expiry;}
+  public SessionController(JdbcTemplate db,ObjectMapper json,AssessmentExpiry expiry,TemplateCatalogue catalogue){this.db=db;this.json=json;this.expiry=expiry;this.catalogue=catalogue;}
   public record Login(String code) {}
   public record ReviewSubmission(Integer score,String notes,String recommendation) {}
   public record ReviewSummary(String sessionId,Long submittedAt,Long startedAt,Integer score,String recommendation,Long reviewedAt,String candidateName,String candidateEmail,String interviewTitle) {}
@@ -34,7 +34,7 @@ public class SessionController {
   public record EvidenceCapture(String eventType,String mediaType,String contentType,String imageData) {}
   public record EvidenceSummary(String id,String eventType,String mediaType,Long capturedAt,Long expiresAt) {}
   public record EvidenceImage(String id,String contentType,String imageData) {}
-  public record ReviewDetail(String sessionId,String state,Long submittedAt,Long startedAt,List<Question> questions,List<Answer> answers,List<Check> checks,boolean evidenceConsent,long evidenceRetentionDays,List<EvidenceSummary> evidence,Integer score,String notes,String recommendation,Long reviewedAt) {}
+  public record ReviewDetail(String sessionId,String state,Long submittedAt,Long startedAt,List<Question> questions,List<Answer> answers,List<Check> checks,boolean evidenceConsent,long evidenceRetentionDays,List<EvidenceSummary> evidence,Integer score,String notes,String recommendation,Long reviewedAt,String templateVersion) {}
   private record StoredReviewSession(String id,String state,Long submittedAt,Long startedAt,List<Question> questions,List<Check> checks,boolean evidenceConsent) {}
   private record StoredReview(Integer score,String notes,String recommendation,Long reviewedAt) {}
   public record Check(String key,String status) {}
@@ -42,21 +42,21 @@ public class SessionController {
   public record Answer(String questionId,String answer) {}
   public record SubmissionInput(boolean allowUnanswered) {}
   public record Question(String id,String kind,String text,List<String> choices) {}
-  public record Session(String id,String state,boolean consent,long consentAt,boolean evidenceConsent,Long deadline,Long submittedAt,List<Question> questions,List<Answer> answers,long serverTime,String submissionReason) {}
+  public record Session(String id,String state,boolean consent,long consentAt,boolean evidenceConsent,Long deadline,Long submittedAt,List<Question> questions,List<Answer> answers,long serverTime,String submissionReason,String templateVersion) {}
   private long now(){return System.currentTimeMillis();}
   private ResponseStatusException fail(HttpStatus status,String message){return new ResponseStatusException(status,message);}
   private ResponseStatusException bad(String message){return fail(HttpStatus.BAD_REQUEST,message);}
   private String hash(String s){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(s.getBytes(StandardCharsets.UTF_8)));}catch(Exception e){throw new IllegalStateException(e);}}
   private String encode(Object o){try{return json.writeValueAsString(o);}catch(Exception e){throw new IllegalStateException(e);}}
   private <T>T decode(String s,TypeReference<T> t){try{return json.readValue(s,t);}catch(Exception e){throw new IllegalStateException(e);}}
-  private String auth(String header){
+  String auth(String header){
     if(header==null||!header.startsWith("Bearer "))throw fail(HttpStatus.UNAUTHORIZED,"Sign in required");
     String owner=hash(header.substring(7));
     if(db.queryForObject("SELECT COUNT(*) FROM tokens WHERE token=? AND expires>? AND role='CANDIDATE'",Integer.class,owner,now())==0)throw fail(HttpStatus.UNAUTHORIZED,"Candidate sign in required");
     var invitations=db.queryForList("SELECT invitation_id FROM tokens WHERE token=? AND invitation_id IS NOT NULL",String.class,owner);
     return invitations.isEmpty()?owner:invitations.getFirst();
   }
-  private String reviewerAuth(String header){
+  String reviewerAuth(String header){
     if(header==null||!header.startsWith("Bearer "))throw fail(HttpStatus.UNAUTHORIZED,"Reviewer sign in required");
     String reviewer=hash(header.substring(7));
     if(db.queryForObject("SELECT COUNT(*) FROM tokens WHERE token=? AND expires>? AND role='REVIEWER'",Integer.class,reviewer,now())==0)throw fail(HttpStatus.UNAUTHORIZED,"Reviewer sign in required");
@@ -91,7 +91,7 @@ public class SessionController {
   @GetMapping("/invitation") public Map<String,Object> invitation(@RequestHeader(value="Authorization",required=false) String h){String owner=auth(h);var rows=db.query("SELECT i.candidate_name,i.expires_at,j.title,j.scheduled_at,j.duration_seconds FROM invitations i JOIN interviews j ON j.id=i.interview_id WHERE i.id=?",(r,n)->Map.<String,Object>of("candidateName",r.getString("candidate_name"),"expiresAt",r.getLong("expires_at"),"title",r.getString("title"),"scheduledAt",r.getLong("scheduled_at"),"durationSeconds",r.getInt("duration_seconds")),owner);return rows.isEmpty()?Map.of():rows.getFirst();}
   private Session require(String id,String owner,boolean lock){
     expiry.submitExpired(id,owner);
-    var rows=db.query("SELECT * FROM sessions WHERE id=? AND owner=?"+(lock?" FOR UPDATE":""),(r,n)->new Session(r.getString("id"),r.getString("state"),r.getBoolean("consent"),r.getLong("consent_at"),r.getBoolean("evidence_consent"),(Long)r.getObject("deadline"),(Long)r.getObject("submitted_at"),decode(r.getString("questions"),new TypeReference<List<Question>>(){}),db.query("SELECT question_id,answer FROM answers WHERE session_id=? ORDER BY question_id",(a,i)->new Answer(a.getString(1),a.getString(2)),id),now(),r.getString("submission_reason")),id,owner);
+    var rows=db.query("SELECT * FROM sessions WHERE id=? AND owner=?"+(lock?" FOR UPDATE":""),(r,n)->new Session(r.getString("id"),r.getString("state"),r.getBoolean("consent"),r.getLong("consent_at"),r.getBoolean("evidence_consent"),(Long)r.getObject("deadline"),(Long)r.getObject("submitted_at"),decode(r.getString("questions"),new TypeReference<List<Question>>(){}),db.query("SELECT question_id,answer FROM answers WHERE session_id=? ORDER BY question_id",(a,i)->new Answer(a.getString(1),a.getString(2)),id),now(),r.getString("submission_reason"),catalogue.versionForSession(id)),id,owner);
     if(rows.isEmpty())throw fail(HttpStatus.NOT_FOUND,"Unknown session");return rows.getFirst();
   }
   @Transactional @PostMapping("/sessions") public Session create(@RequestHeader(value="Authorization",required=false) String h,@RequestBody NewSession input){
@@ -170,10 +170,11 @@ public class SessionController {
     var evidence=db.query("SELECT id,event_type,media_type,captured_at,expires_at FROM integrity_evidence WHERE session_id=? AND expires_at>? ORDER BY captured_at",(r,n)->new EvidenceSummary(r.getString("id"),r.getString("event_type"),r.getString("media_type"),r.getLong("captured_at"),r.getLong("expires_at")),id,now());
     var reviews=db.query("SELECT score,notes,recommendation,reviewed_at FROM reviews WHERE session_id=?",(r,n)->new StoredReview(r.getInt("score"),r.getString("notes"),r.getString("recommendation"),r.getLong("reviewed_at")),id);
     StoredReview review=reviews.isEmpty()?null:reviews.getFirst();
-    return new ReviewDetail(session.id(),session.state(),session.submittedAt(),session.startedAt(),session.questions(),answers,session.checks(),session.evidenceConsent(),Math.max(1,evidenceRetentionDays),evidence,review==null?null:review.score(),review==null?null:review.notes(),review==null?null:review.recommendation(),review==null?null:review.reviewedAt());
+    return new ReviewDetail(session.id(),session.state(),session.submittedAt(),session.startedAt(),session.questions(),answers,session.checks(),session.evidenceConsent(),Math.max(1,evidenceRetentionDays),evidence,review==null?null:review.score(),review==null?null:review.notes(),review==null?null:review.recommendation(),review==null?null:review.reviewedAt(),catalogue.versionForSession(id));
   }
   @Transactional @PostMapping("/review/sessions/{id}") public ReviewDetail saveReview(@RequestHeader(value="Authorization",required=false) String h,@PathVariable String id,@RequestBody ReviewSubmission input){
     String reviewer=reviewerAuth(h);
+    if(catalogue.versionForSession(id)!=null)throw bad("Use the template rubric evaluation instead of an unstructured overall score");
     if(input==null||input.score()==null||input.score()<1||input.score()>5)throw bad("Score must be between 1 and 5");
     if(input.notes()==null||input.notes().isBlank()||input.notes().length()>5000)throw bad("Review notes are required and must be at most 5000 characters");
     if(input.recommendation()==null||!Set.of("SHORTLIST","HOLD","REJECT").contains(input.recommendation()))throw bad("Choose a valid recommendation");

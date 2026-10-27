@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS assessment_templates (version VARCHAR(80) PRIMARY KEY, status VARCHAR(30) NOT NULL, definition CLOB NOT NULL, approved_by VARCHAR(64), approved_at BIGINT);
+ALTER TABLE interviews ADD COLUMN IF NOT EXISTS template_version VARCHAR(80);
+CREATE TABLE IF NOT EXISTS coding_runs (id VARCHAR(80) PRIMARY KEY, session_id VARCHAR(80) NOT NULL REFERENCES sessions(id), question_id VARCHAR(80) NOT NULL, visibility VARCHAR(20) NOT NULL, state VARCHAR(30) NOT NULL, source CLOB NOT NULL, result CLOB, created_at BIGINT NOT NULL);
+CREATE INDEX IF NOT EXISTS coding_queue_idx ON coding_runs(state,created_at);
+CREATE TABLE IF NOT EXISTS template_evaluations (session_id VARCHAR(80) PRIMARY KEY REFERENCES sessions(id), state VARCHAR(30) NOT NULL, criteria CLOB NOT NULL, notes CLOB NOT NULL, recommendation VARCHAR(20), reviewer VARCHAR(64), published_at BIGINT);
+ALTER TABLE coding_runs ADD COLUMN IF NOT EXISTS final_key VARCHAR(200) UNIQUE;

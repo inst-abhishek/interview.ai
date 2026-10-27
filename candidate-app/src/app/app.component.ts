@@ -2,20 +2,24 @@ import {Component, OnDestroy, OnInit, AfterViewInit, ViewChild, ElementRef} from
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {RecruiterComponent} from './recruiter.component';
+import {TemplateCatalogueComponent} from './template-catalogue.component';
+import {TemplateEvaluationComponent} from './template-evaluation.component';
+import {JavaCodeComponent} from './java-code.component';
 declare const ImageCapture: new(track:MediaStreamTrack)=>{grabFrame():Promise<ImageBitmap>};
 type Status='pending'|'passed'|'failed';
 type Check={key:string;label:string;detail:string;status:Status};
 type Question={id:string;kind:string;text:string;choices:string[]};
-type Session={id:string;state:string;evidenceConsent:boolean;questions:Question[];answers:{questionId:string;answer:string}[];deadline:number;serverTime:number;submissionReason?:string};
+type Session={id:string;state:string;evidenceConsent:boolean;questions:Question[];answers:{questionId:string;answer:string}[];deadline:number;serverTime:number;submissionReason?:string;templateVersion?:string};
 type ReviewSummary={sessionId:string;submittedAt:number;startedAt:number|null;score:number|null;recommendation:string|null;reviewedAt:number|null;candidateName:string|null;candidateEmail:string|null;interviewTitle:string|null};
 type ReviewFilters={search:string;status:string;interview:string;from:string;to:string;sort:string;size:number};
 type ReviewPage={items:ReviewSummary[];page:number;size:number;total:number;totalPages:number;allCount:number;awaitingCount:number;reviewedCount:number};
 type ReviewTab='overview'|'answers'|'evidence'|'feedback';
 type EvidenceSummary={id:string;eventType:string;mediaType:string;capturedAt:number;expiresAt:number};
-type ReviewDetail={sessionId:string;state:string;submittedAt:number;startedAt:number|null;questions:Question[];answers:{questionId:string;answer:string}[];checks:Check[];evidenceConsent:boolean;evidenceRetentionDays:number;evidence:EvidenceSummary[];score:number|null;notes:string|null;recommendation:string|null;reviewedAt:number|null};
-@Component({selector:'exl-root',standalone:true,imports:[CommonModule,FormsModule,RecruiterComponent],templateUrl:'./app.component.html'})
+type ReviewDetail={sessionId:string;state:string;submittedAt:number;startedAt:number|null;questions:Question[];answers:{questionId:string;answer:string}[];checks:Check[];evidenceConsent:boolean;evidenceRetentionDays:number;evidence:EvidenceSummary[];score:number|null;notes:string|null;recommendation:string|null;reviewedAt:number|null;templateVersion?:string};
+@Component({selector:'exl-root',standalone:true,imports:[CommonModule,FormsModule,RecruiterComponent,TemplateCatalogueComponent,TemplateEvaluationComponent,JavaCodeComponent],templateUrl:'./app.component.html'})
 export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
  private api='http://127.0.0.1:8080/api';
+ showTemplateCatalogue=false;
  reviewFilters:ReviewFilters={search:'',status:'AWAITING',interview:'',from:'',to:'',sort:'OLDEST',size:10};private activeReviewFilters:ReviewFilters={...this.reviewFilters};
  reviewListPage=0;reviewListTotal=0;reviewListPages=1;reviewAllCount=0;reviewAwaitingCount=0;reviewReviewedCount=0;reviewListLoading=false;private reviewListRequest=0;
  selectedCandidateName='Legacy demo candidate';selectedCandidateEmail='';selectedInterviewTitle='Shared-code assessment';
@@ -85,6 +89,7 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
  isReviewPromptAdded(prompt:string){return this.reviewNotes.split('\n').some(line=>line.trimStart().startsWith(`${prompt}:`));}
  addReviewPrompt(prompt:string){if(this.isReviewPromptAdded(prompt))return;const prefix=this.reviewNotes.trim()?`${this.reviewNotes.trim()}\n`:'';this.reviewNotes=`${prefix}${prompt}: `;}
  async saveReview(){if(!this.selectedReview||this.reviewBusy)return;const updating=Boolean(this.selectedReview.reviewedAt);this.reviewBusy=true;this.reviewerError='';this.reviewerMessage='';try{this.selectedReview=await this.request<ReviewDetail>(`/review/sessions/${this.selectedReview.sessionId}`,{score:this.reviewScore,notes:this.reviewNotes,recommendation:this.reviewRecommendation},this.reviewerToken);this.reviewerMessage=updating?'Review updated successfully.':'Review saved successfully.';try{await this.fetchReviewPage();}catch(e){this.reviewerError=`Review saved, but the submissions list could not be refreshed: ${e instanceof Error?e.message:String(e)}`;}}catch(e){this.reviewerError=e instanceof Error?e.message:String(e);}finally{this.reviewBusy=false;}}
+ async onTemplatePublished(){if(!this.selectedReview)return;this.selectedReview=await this.request<ReviewDetail>('/review/sessions/'+this.selectedReview.sessionId,undefined,this.reviewerToken);await this.loadReviews();}
  async viewEvidence(item:EvidenceSummary){this.reviewerError='';this.clearEvidencePreview();try{const r=await fetch(`${this.api}/review/evidence/${item.id}`,{headers:{Authorization:`Bearer ${this.reviewerToken}`}});if(!r.ok)throw new Error(`Unable to load evidence (${r.status})`);this.selectedEvidenceId=item.id;this.selectedEvidenceUrl=URL.createObjectURL(await r.blob());if(this.evidenceDialog&&!this.evidenceDialog.nativeElement.open)this.evidenceDialog.nativeElement.showModal();}catch(e){this.reviewerError=e instanceof Error?e.message:String(e);}}
  async deleteEvidence(item:EvidenceSummary){if(!this.selectedReview||this.reviewBusy)return;this.reviewBusy=true;this.reviewerError='';try{const r=await fetch(`${this.api}/review/evidence/${item.id}`,{method:'DELETE',headers:{Authorization:`Bearer ${this.reviewerToken}`}});if(!r.ok)throw new Error(`Unable to delete evidence (${r.status})`);if(this.selectedEvidenceId===item.id)this.closeEvidence();this.selectedReview.evidence=this.selectedReview.evidence.filter(evidence=>evidence.id!==item.id);this.timelinePage=Math.min(this.timelinePage,this.timelinePages-1);this.evidencePage=Math.min(this.evidencePage,this.evidencePages-1);}catch(e){this.reviewerError=e instanceof Error?e.message:String(e);}finally{this.reviewBusy=false;}}
  private clearEvidencePreview(){if(this.selectedEvidenceUrl)URL.revokeObjectURL(this.selectedEvidenceUrl);this.selectedEvidenceUrl='';this.selectedEvidenceId='';}

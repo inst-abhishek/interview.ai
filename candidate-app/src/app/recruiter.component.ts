@@ -1,17 +1,19 @@
 import {Component, EventEmitter, OnInit, Output} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
+import {TemplateCatalogueComponent} from './template-catalogue.component';
+import {TemplateEvaluationComponent} from './template-evaluation.component';
 type Account={id:string;name:string;email:string};
 type Question={id:string;kind:string;text:string;choices:string[];editable:boolean};
 type Interview={id:string;title:string;description:string;durationSeconds:number;scheduledAt:number;questions:Question[];createdAt:number};
 type Candidate={invitationId:string;candidateName:string;candidateEmail:string;expiresAt:number;sessionId:string|null;state:string;startedAt:number|null;submittedAt:number|null;score:number|null;recommendation:string|null};
 type Invitation={invitationId:string;code:string;candidateName:string;candidateEmail:string;expiresAt:number};
-type Submission={sessionId:string;candidateName:string;candidateEmail:string;interviewTitle:string;state:string;questions:Question[];answers:{questionId:string;answer:string}[];score:number|null;notes:string|null;recommendation:string|null};
-@Component({selector:'exl-recruiter',standalone:true,imports:[CommonModule,FormsModule],templateUrl:'./recruiter.component.html',styleUrls:['./recruiter.component.css']})
+type Submission={sessionId:string;candidateName:string;candidateEmail:string;interviewTitle:string;state:string;questions:Question[];answers:{questionId:string;answer:string}[];score:number|null;notes:string|null;recommendation:string|null;templateVersion?:string};
+@Component({selector:'exl-recruiter',standalone:true,imports:[CommonModule,FormsModule,TemplateCatalogueComponent,TemplateEvaluationComponent],templateUrl:'./recruiter.component.html',styleUrls:['./recruiter.component.css']})
 export class RecruiterComponent implements OnInit {
  @Output() exit=new EventEmitter<void>();
  token=sessionStorage.getItem('recruiterToken')||'';account?:Account;registering=false;busy=false;error='';notice='';
- name='';email='';password='';setupCode='';tab:'interviews'|'questions'='interviews';
+ name='';email='';password='';setupCode='';tab:'interviews'|'questions'|'templates'='interviews';
  interviews:Interview[]=[];questions:Question[]=[];selected?:Interview;candidates:Candidate[]=[];submission?:Submission;
  showInterviewForm=false;title='';description='';durationMinutes=30;scheduledAt=this.localDate(Date.now());selectedQuestions:string[]=[];
  questionId='';questionKind='TECHNICAL';questionText='';choicesText='';questionSearch='';kindFilter='';
@@ -26,6 +28,7 @@ export class RecruiterComponent implements OnInit {
  private async refresh(){const results=await Promise.all([this.api<Interview[]>('/interviews'),this.api<Question[]>('/questions')]);this.interviews=results[0];this.questions=results[1];}
  async reload(){await this.run(async()=>{await this.refresh();if(this.selected)this.candidates=await this.api<Candidate[]>(`/interviews/${this.selected.id}/candidates`);});}
  async selectInterview(item:Interview){await this.run(async()=>{this.selected=item;this.regenerating=undefined;this.candidates=[];this.submission=undefined;this.invitation=undefined;this.expiresAt=this.localDate(Math.max(Date.now(),item.scheduledAt)+86400000);this.candidates=await this.api<Candidate[]>(`/interviews/${item.id}/candidates`);});}
+ async onTemplateCreated(id:string){await this.refresh();const interview=this.interviews.find(i=>i.id===id);if(interview){this.tab='interviews';await this.selectInterview(interview);this.notice='Approved template assigned. Generate a candidate invitation below.';}}
  async createInterview(){await this.run(async()=>{const scheduledAt=new Date(this.scheduledAt).getTime();if(!Number.isFinite(scheduledAt))throw Error('Choose a scheduled start');const r=await this.api<Interview>('/interviews',{title:this.title,description:this.description,durationMinutes:this.durationMinutes,scheduledAt,questionIds:this.selectedQuestions});this.interviews=[r,...this.interviews];this.selected=r;this.candidates=[];this.submission=undefined;this.invitation=undefined;this.showInterviewForm=false;this.title='';this.description='';this.selectedQuestions=[];this.expiresAt=this.localDate(Math.max(Date.now(),r.scheduledAt)+86400000);this.notice='Interview created. Invite your first candidate below.';});}
  toggleQuestion(id:string){this.selectedQuestions=this.selectedQuestions.includes(id)?this.selectedQuestions.filter(q=>q!==id):[...this.selectedQuestions,id];}
  get filteredQuestions(){return this.questions.filter(q=>(!this.kindFilter||q.kind===this.kindFilter)&&q.text.toLowerCase().includes(this.questionSearch.toLowerCase()));}

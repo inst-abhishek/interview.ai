@@ -1,0 +1,3 @@
+# Keep the runner image build context empty except for its Dockerfile.
+*
+!Dockerfile

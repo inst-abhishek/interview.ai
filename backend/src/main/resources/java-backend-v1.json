@@ -1,0 +1,249 @@
+{
+  "version": "java-backend-mid-v1",
+  "title": "Java Backend Developer ? Mid-level",
+  "description": "Java fundamentals, practical data processing, API resilience and database consistency. 8 MCQs, 1 Java coding problem, 2 written responses.",
+  "durationMinutes": 60,
+  "skills": [
+    "Java 21",
+    "Collections",
+    "Concurrency",
+    "REST APIs",
+    "Database consistency"
+  ],
+  "reviewerInstructions": "Review each written response against both criteria. Inspect submitted source and coding outcomes before scoring code quality. Infrastructure errors are not wrong answers. Explain awarded points in the feedback. Publish only after all criteria have been scored. The recommendation is a human judgment; this application does not make hiring decisions.",
+  "items": [
+    {
+      "id": "java-v1-m1",
+      "kind": "MCQ",
+      "text": "Which Java collection offers average O(1) lookup by key?",
+      "choices": [
+        "ArrayList",
+        "HashMap",
+        "LinkedList",
+        "TreeMap"
+      ],
+      "correctAnswer": "HashMap",
+      "explanation": "HashMap provides expected constant-time key lookup under a suitable hash distribution.",
+      "maxPoints": 2,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "java-v1-m2",
+      "kind": "MCQ",
+      "text": "Which mechanism closes an AutoCloseable resource when its scope ends?",
+      "choices": [
+        "finalize()",
+        "try-with-resources",
+        "System.gc()",
+        "volatile"
+      ],
+      "correctAnswer": "try-with-resources",
+      "explanation": "try-with-resources invokes close even when the body throws.",
+      "maxPoints": 2,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "java-v1-m3",
+      "kind": "MCQ",
+      "text": "Which statement about volatile is correct?",
+      "choices": [
+        "It makes every compound operation atomic",
+        "It provides visibility of writes across threads",
+        "It prevents all race conditions",
+        "It replaces synchronization in every case"
+      ],
+      "correctAnswer": "It provides visibility of writes across threads",
+      "explanation": "Visibility does not make a read-modify-write sequence such as increment atomic.",
+      "maxPoints": 2,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "java-v1-m4",
+      "kind": "MCQ",
+      "text": "Which HTTP method is defined as idempotent?",
+      "choices": [
+        "POST in every API",
+        "PUT",
+        "CONNECT in every API",
+        "No method is idempotent"
+      ],
+      "correctAnswer": "PUT",
+      "explanation": "Repeating the same PUT request has the same intended resource effect.",
+      "maxPoints": 2,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "java-v1-m5",
+      "kind": "MCQ",
+      "text": "Which Java exception is checked?",
+      "choices": [
+        "NullPointerException",
+        "IllegalArgumentException",
+        "IOException",
+        "ArithmeticException"
+      ],
+      "correctAnswer": "IOException",
+      "explanation": "IOException must be caught or declared unless a superclass declaration handles it.",
+      "maxPoints": 2,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "java-v1-m6",
+      "kind": "MCQ",
+      "text": "What does a database transaction primarily group?",
+      "choices": [
+        "Related operations into a unit of work",
+        "All requests into one global lock",
+        "All tables into one index",
+        "Only read operations"
+      ],
+      "correctAnswer": "Related operations into a unit of work",
+      "explanation": "Transactions define a consistency boundary, subject to the chosen isolation level.",
+      "maxPoints": 2,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "java-v1-m7",
+      "kind": "MCQ",
+      "text": "What is a useful reason to use a bounded thread pool?",
+      "choices": [
+        "To make memory unlimited",
+        "To control concurrency and resource use",
+        "To remove the need for timeouts",
+        "To guarantee no task fails"
+      ],
+      "correctAnswer": "To control concurrency and resource use",
+      "explanation": "Bounded concurrency limits resource pressure; rejection and queue behavior still need design.",
+      "maxPoints": 2,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "java-v1-m8",
+      "kind": "MCQ",
+      "text": "Which technique helps make retrying a payment creation request safer?",
+      "choices": [
+        "An idempotency key",
+        "Retrying indefinitely",
+        "Disabling validation",
+        "Returning success before writing anything"
+      ],
+      "correctAnswer": "An idempotency key",
+      "explanation": "A stored idempotency key can prevent duplicate effects for the same operation.",
+      "maxPoints": 2,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "java-v1-c1",
+      "kind": "CODING",
+      "text": "Duplicate customer IDs\nRead 0 to 10,000 signed 32-bit integers from standard input, separated by whitespace. Print each ID that occurs more than once, once only, in ascending numeric order, separated by a single space. Print NONE if there are no duplicates.\nUse Java 21 and a public class Main with a public static void main(String[] args). Do not use packages, files, network access or external libraries.\nExample: input 4 2 4 3 2 gives output 2 4.",
+      "choices": [],
+      "maxPoints": 40,
+      "rubric": [
+        {
+          "id": "approach",
+          "label": "Approach and code quality",
+          "maxPoints": 10,
+          "guidance": "Assess correct data structures, handling of edge cases, sensible complexity, readable naming and concise explanation through code."
+        }
+      ],
+      "starterCode": "import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        // Read IDs from System.in and print the required result.\n    }\n}\n",
+      "publicTests": [
+        {
+          "id": "sample-1",
+          "input": "4 2 4 3 2\n",
+          "expected": "2 4"
+        },
+        {
+          "id": "sample-2",
+          "input": "1 2 3\n",
+          "expected": "NONE"
+        }
+      ],
+      "hiddenTests": [
+        {
+          "id": "hidden-1",
+          "input": "",
+          "expected": "NONE"
+        },
+        {
+          "id": "hidden-2",
+          "input": "5 5 5 5\n",
+          "expected": "5"
+        },
+        {
+          "id": "hidden-3",
+          "input": "-1 -3 -1 0 0 -3 8\n",
+          "expected": "-3 -1 0"
+        },
+        {
+          "id": "hidden-4",
+          "input": "2147483647 -2147483648 2147483647 -2147483648\n",
+          "expected": "-2147483648 2147483647"
+        }
+      ],
+      "referenceSolution": "import java.util.*;\npublic class Main {\n public static void main(String[] args) {\n  Scanner in=new Scanner(System.in); TreeMap<Integer,Integer> counts=new TreeMap<>();\n  while(in.hasNextInt()){int n=in.nextInt();counts.merge(n,1,Integer::sum);}\n  StringJoiner out=new StringJoiner(\" \");\n  for(var e:counts.entrySet())if(e.getValue()>1)out.add(e.getKey().toString());\n  System.out.println(out.length()==0?\"NONE\":out.toString());\n }\n}\n"
+    },
+    {
+      "id": "java-v1-t1",
+      "kind": "TECHNICAL",
+      "text": "Design a resilient order-creation REST API. Explain timeouts, retry behavior, duplicate requests and how you would observe failures.",
+      "choices": [],
+      "maxPoints": 22,
+      "publicTests": [],
+      "hiddenTests": [],
+      "rubric": [
+        {
+          "id": "resilience",
+          "label": "Failure handling and resilience",
+          "maxPoints": 11,
+          "guidance": "0: no usable failure strategy. 1-5: generic retries/timeouts. 6-8: bounded retries, backoff, timeout budgets. 9-11: explains transient versus permanent errors, overload and trade-offs."
+        },
+        {
+          "id": "idempotency",
+          "label": "Consistency and observability",
+          "maxPoints": 11,
+          "guidance": "0: ignores duplicate effects. 1-5: mentions logging or deduplication. 6-8: describes idempotency storage and meaningful metrics. 9-11: considers atomicity, concurrent retries, tracing and recovery."
+        }
+      ]
+    },
+    {
+      "id": "java-v1-t2",
+      "kind": "TECHNICAL",
+      "text": "Two clients attempt to reserve the last unit of a product at the same time. Describe a database-backed approach that avoids overselling and explain its trade-offs.",
+      "choices": [],
+      "maxPoints": 22,
+      "publicTests": [],
+      "hiddenTests": [],
+      "rubric": [
+        {
+          "id": "correctness",
+          "label": "Concurrency correctness",
+          "maxPoints": 11,
+          "guidance": "0: unsafe read-then-write. 1-5: mentions a transaction without explaining the race. 6-8: conditional atomic update, optimistic versioning or appropriate row locking. 9-11: explains affected-row checks, rollback and retries."
+        },
+        {
+          "id": "tradeoffs",
+          "label": "Operational trade-offs",
+          "maxPoints": 11,
+          "guidance": "0: no explanation. 1-5: generic performance claims. 6-8: explains contention and retry behavior. 9-11: addresses deadlocks, isolation, workload assumptions and failure recovery."
+        }
+      ]
+    }
+  ]
+}
