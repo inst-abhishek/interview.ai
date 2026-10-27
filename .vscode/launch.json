@@ -9,7 +9,8 @@
       "env": {
         "INTERVIEW_INVITATION_CODE": "exldemo",
         "INTERVIEW_REVIEWER_CODE": "reviewdemo",
-        "INTERVIEW_RECRUITER_SETUP_CODE": "exl-recruiter-setup"
+        "INTERVIEW_RECRUITER_SETUP_CODE": "exl-recruiter-setup",
+        "INTERVIEW_CODING_ENABLED": "true"
       },
       "command": "mvn.cmd spring-boot:run"
     },

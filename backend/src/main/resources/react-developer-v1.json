@@ -1,0 +1,222 @@
+{
+  "version": "react-developer-mid-v1",
+  "title": "React Developer - Mid-level",
+  "description": "Role-specific fundamentals and practical troubleshooting. 8 MCQs and 3 written scenarios; no coding questions.",
+  "durationMinutes": 60,
+  "skills": [
+    "React",
+    "JavaScript",
+    "State management",
+    "Effects",
+    "Accessibility",
+    "Frontend testing"
+  ],
+  "reviewerInstructions": "Score each written response against its rubric. Award points for specific, technically sound reasoning and trade-offs. Notes are optional. Publish only after every criterion is scored. The recommendation is a human judgment; this application does not make hiring decisions.",
+  "items": [
+    {
+      "id": "react-developer-v1-m1",
+      "kind": "MCQ",
+      "text": "How should an array stored in React state be updated?",
+      "choices": [
+        "Mutate the existing array and keep its reference",
+        "Create an updated array and pass it to the state setter",
+        "Assign directly to the state variable",
+        "Update the DOM manually"
+      ],
+      "correctAnswer": "Create an updated array and pass it to the state setter",
+      "explanation": "Treat state arrays as read-only; supply a new array when changing their contents.",
+      "maxPoints": 5,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "react-developer-v1-m2",
+      "kind": "MCQ",
+      "text": "What is the main purpose of a stable key when rendering a changing React list?",
+      "choices": [
+        "Encrypt list data",
+        "Identify corresponding list items between renders",
+        "Guarantee alphabetical sorting",
+        "Make requests synchronous"
+      ],
+      "correctAnswer": "Identify corresponding list items between renders",
+      "explanation": "Stable keys let React match list items when items move, are inserted, or are removed.",
+      "maxPoints": 5,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "react-developer-v1-m3",
+      "kind": "MCQ",
+      "text": "An Effect subscribes to an external event source. What should its cleanup do?",
+      "choices": [
+        "Create another subscription",
+        "Remove the subscription it created",
+        "Update every dependency",
+        "Clear all browser storage"
+      ],
+      "correctAnswer": "Remove the subscription it created",
+      "explanation": "Effect cleanup should undo the setup so subscriptions do not accumulate.",
+      "maxPoints": 5,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "react-developer-v1-m4",
+      "kind": "MCQ",
+      "text": "What happens when a listed Effect dependency changes between renders?",
+      "choices": [
+        "React may re-synchronize the Effect after cleanup",
+        "The component can never render again",
+        "The dependency is automatically deleted",
+        "The browser reloads the page"
+      ],
+      "correctAnswer": "React may re-synchronize the Effect after cleanup",
+      "explanation": "React compares dependencies and re-synchronizes an Effect when its dependencies change.",
+      "maxPoints": 5,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "react-developer-v1-m5",
+      "kind": "MCQ",
+      "text": "Which update uses the pending previous state when incrementing a counter?",
+      "choices": [
+        "setCount(previous => previous + 1)",
+        "count = count + 1",
+        "setCount = count + 1",
+        "document.count++"
+      ],
+      "correctAnswer": "setCount(previous => previous + 1)",
+      "explanation": "A functional updater calculates the next state from the pending previous state.",
+      "maxPoints": 5,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "react-developer-v1-m6",
+      "kind": "MCQ",
+      "text": "Which element is the best default for an action a user can activate by keyboard?",
+      "choices": [
+        "A div with only an onClick handler",
+        "A span with only a color change",
+        "A native button",
+        "A paragraph with a pointer cursor"
+      ],
+      "correctAnswer": "A native button",
+      "explanation": "Native buttons provide keyboard activation and button semantics; custom interactions need equivalent accessibility support.",
+      "maxPoints": 5,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "react-developer-v1-m7",
+      "kind": "MCQ",
+      "text": "Where should a browser application enforce authorization for protected API data?",
+      "choices": [
+        "In the API server for each protected request",
+        "Only in a hidden menu",
+        "Only in a React component name",
+        "Only in CSS"
+      ],
+      "correctAnswer": "In the API server for each protected request",
+      "explanation": "Browser UI restrictions cannot replace server-side authorization.",
+      "maxPoints": 5,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "react-developer-v1-m8",
+      "kind": "MCQ",
+      "text": "What should an accessible asynchronous results screen distinguish?",
+      "choices": [
+        "Only success",
+        "Only the number of CSS files",
+        "Loading, successful empty results, data and errors",
+        "Only the JavaScript bundle name"
+      ],
+      "correctAnswer": "Loading, successful empty results, data and errors",
+      "explanation": "Distinct request states let users understand progress, recover from errors and recognize valid empty results.",
+      "maxPoints": 5,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "react-developer-v1-t1",
+      "kind": "TECHNICAL",
+      "text": "A React search screen sometimes shows results for an older query. Explain the state model, request lifecycle, error handling and tests you would use.",
+      "choices": [],
+      "maxPoints": 20,
+      "publicTests": [],
+      "hiddenTests": [],
+      "rubric": [
+        {
+          "id": "criterion-1",
+          "label": "Correctness and lifecycle",
+          "maxPoints": 10,
+          "guidance": "0: ignores race conditions. 1-4: basic fetching. 5-7: cleanup or request identity guards, dependency handling and clear state ownership. 8-10: discusses cancellation limits, caching and competing requests."
+        },
+        {
+          "id": "criterion-2",
+          "label": "Testing and user experience",
+          "maxPoints": 10,
+          "guidance": "0: no tests. 1-4: happy path only. 5-7: out-of-order responses, error/empty/loading states and retry. 8-10: covers accessibility announcements and fast user input."
+        }
+      ]
+    },
+    {
+      "id": "react-developer-v1-t2",
+      "kind": "TECHNICAL",
+      "text": "A list of 5,000 editable items loses input focus and renders slowly. Describe how you would diagnose it and improve performance without losing user edits.",
+      "choices": [],
+      "maxPoints": 20,
+      "publicTests": [],
+      "hiddenTests": [],
+      "rubric": [
+        {
+          "id": "criterion-1",
+          "label": "Identity and state ownership",
+          "maxPoints": 10,
+          "guidance": "0: unsafe mutation or unstable identity. 1-4: basic controlled inputs. 5-7: stable keys, immutable updates and localized state. 8-10: explains reconciliation, stale state and preserving in-progress edits."
+        },
+        {
+          "id": "criterion-2",
+          "label": "Measured performance and accessibility",
+          "maxPoints": 10,
+          "guidance": "0: no plan. 1-4: generic memoization. 5-7: profiling, virtualization/pagination and measured memoization. 8-10: tests focus, keyboard navigation and rendering costs."
+        }
+      ]
+    },
+    {
+      "id": "react-developer-v1-t3",
+      "kind": "TECHNICAL",
+      "text": "Design an accessible checkout form using a protected API. Explain validation, preventing duplicate orders, security boundaries and failure recovery.",
+      "choices": [],
+      "maxPoints": 20,
+      "publicTests": [],
+      "hiddenTests": [],
+      "rubric": [
+        {
+          "id": "criterion-1",
+          "label": "Form correctness and security",
+          "maxPoints": 10,
+          "guidance": "0: trusts client authorization. 1-4: basic form. 5-7: labeled inputs, field/server validation and server authorization. 8-10: handles sensitive data, idempotency and concurrency boundaries."
+        },
+        {
+          "id": "criterion-2",
+          "label": "Recovery and verification",
+          "maxPoints": 10,
+          "guidance": "0: ignores failures. 1-4: generic alerts. 5-7: loading and retry states, preserved inputs and integration tests. 8-10: tests keyboard operation, error focus and ambiguous API outcomes."
+        }
+      ]
+    }
+  ]
+}

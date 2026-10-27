@@ -148,53 +148,45 @@ Search by candidate name, email, interview title or session reference. Filter by
 
 Filters and the current page survive opening a candidate and returning, and are stored in the browser tab's session storage for reload recovery. Signing out clears that state. After a review is saved, the same filtered page refreshes; if removing the reviewed row makes the last page disappear, the backend returns the nearest valid page. Failed page loads retain the previously displayed records and page. Restart the backend and refresh the frontend together when upgrading to this response format.
 
-## Java assessment template preview (reversible feature branch)
+## Assessment catalogue on main
 
-The new work lives on `feature/java-assessment-template`. The baseline is `main` at `1e8d354`, also tagged `checkpoint/pre-java-template`. Nothing from this feature is pushed or merged automatically.
+The assessment workflow is enabled in the normal application. Use **Full application (frontend + backend)** in VS Code. The main H2 database is **backend/data/interviews.mv.db**. Startup applies additive, repeatable schema changes and inserts missing catalogue versions as Draft; it preserves existing accounts, questions, interviews, submissions, reviews and template versions.
 
-Stop running servers before switching modes. In VS Code select **Preview: Java assessment template**. This launches Spring Boot with the `java-template` profile and the normal Angular frontend. The preview creates **backend/data/java-template/interviews.mv.db** and its own invitation key. The original **backend/data/interviews.mv.db** is not read or modified by the preview profile. `JAVA_TEMPLATE_DB_URL` can override only the preview database URL. Use a new Incognito window because existing browser tokens refer to the baseline database.
+| Assessment | Duration | Questions | Coding |
+|---|---|---|---|
+| Java Backend Developer | 60 minutes | 8 MCQs, 1 coding, 2 written | Java 21 |
+| Java Full Stack Developer with Angular | 60 minutes | 8 MCQs, 1 coding, 2 written | Java 21 |
+| React Developer | 60 minutes | 8 MCQs, 3 written | None |
+| Cloud Operations Developer | 60 minutes | 8 MCQs, 3 written | None |
 
-The normal **Full application (frontend + backend)** option retains the baseline database and disables the catalogue. On the preview branch the new catalogue schema is applied only by the preview profile. Existing manual question-bank assessments continue to work.
+Each version totals 100 points. Java assessments allocate 16 MCQ points, 30 execution-test points and 54 reviewer-rubric points. React and Cloud Operations allocate 40 MCQ points and 60 reviewer-rubric points. New templates require technical review and approval before recruiter assignment. Only Java assessments require Docker/reference validation. React and Cloud Operations do not queue coding jobs or wait for a runner; their coding score is Not applicable.
 
 ### Coding runner setup
 
-This machine does not currently have a working WSL/Docker engine. The feature does not execute submitted code directly on Windows or inside the Spring Boot JVM. Docker execution is disabled until explicitly enabled.
-
-1. Install WSL and Docker Desktop. The helper `docs/Setup-Java-Coding.ps1 -InstallPrerequisites` uses official Windows package sources and leaves installer/terms prompts for you. Run from an administrator terminal if required. Complete any Windows restart manually; the script never restarts the computer.
-2. Start Docker Desktop and complete its first-run setup/agreement. Select Linux containers. See [Docker's Windows installation instructions](https://docs.docker.com/desktop/setup/install/windows-install/).
-3. Run `powershell -ExecutionPolicy Bypass -File docs/Setup-Java-Coding.ps1 -BuildImage` from the project root. This builds `interview-java-runner:1` from the provided Dockerfile. Image building downloads the official Eclipse Temurin Java 21 base image.
-4. Add `"INTERVIEW_CODING_ENABLED": "true"` to **Backend: Java template preview** in launch.json, or set the variable in the terminal starting that profile. Restart the backend. Do not enable it for an unconfigured runner.
-
-Each test executes in a new non-root Linux container with no network, read-only root and submission mount, dropped capabilities, no-new-privileges, a limited tmpfs, CPU/memory/process/output limits, and a host-side timeout and cleanup. The runtime uses `--pull=never`. Slow code runs on a separate worker so it cannot block assessment-expiry scheduling. These Docker controls are documented in [Running containers](https://docs.docker.com/engine/containers/run/). This is a local POC runner; production untrusted-code hosting needs a dedicated hardened execution service and operational review.
-
-### Preview workflow
-
-1. Register a recruiter using setup code `exl-recruiter-setup`; the preview database starts with no accounts.
-2. Sign in as reviewer with `reviewdemo`. Open **Technical template catalogue**, inspect the answer keys, coding reference and rubric, then select **Validate reference code & approve**. Approval runs the reference solution against every public and hidden test. If Docker is unavailable, approval is blocked; the catalogue remains DRAFT rather than claiming an untested template is approved.
-3. As recruiter, open **Assessment templates**, select the approved Java Backend Developer mid-level version, enter a job title and schedule, then generate an invitation as usual.
-4. The candidate gets 8 MCQs, 1 Java 21 coding problem and 2 written questions in a 60-minute assessment. Coding uses a single `Main.java` editor with starter code and queued public-example runs. Autosave and deadline submission freeze server-saved source code. Public runs do not expose hidden tests or change the final frozen source.
-5. Submitted assessments are queued for final public/hidden coding tests, including expiry submissions and recovery after a backend restart. Reviewer Feedback shows MCQ scores (16 points), coding-test correctness (30 points), coding-quality rubric (10 points) and written-response rubrics (44 points). Infrastructure errors keep coding scores pending, not zero. Retry failed infrastructure runs from reviewer evaluation.
-6. Score every rubric criterion and add evidence-based notes, save a draft, then publish a recommendation. Publication requires complete rubric scores and a completed coding evaluation. Only publication writes the overall recommendation into the existing review queue. The overall percentage is displayed in Template evaluation; the existing 1–5 summary uses the documented bucket `round(total/20)` bounded to 1–5. Published evaluations are frozen in this preview. Recruiters can read the breakdown; they cannot override technical scores through the legacy review form.
-
-The template is an immutable version stored when first seeded. Answer keys, hidden tests and reference solutions are server-side and restricted to authorized technical review. Candidate-facing question snapshots contain only the public question fields; coding metadata exposes public examples only. General technical-author editing, new template versions, AI evaluation, multiple languages, multiple files and published-evaluation revisions remain later work. No external AI request is made by this feature.
-
-### Revert or resume
-
-After stopping the running servers and with a clean working tree:
+Install/start Docker Desktop with Linux containers, then run:
 
 ```powershell
-git switch main
+.\docs\Setup-Java-Coding.ps1 -BuildImage
+$env:INTERVIEW_CODING_ENABLED = 'true'
 ```
 
-Run **Full application (frontend + backend)** to return to the original code and original database. Keep the preview database if you may return to the experiment:
+Restart the backend after setting the variable. The main VS Code launch configuration enables coding execution locally. Candidates never install Docker or WSL; execution takes place on the backend. The editor and runner support Java only.
 
-```powershell
-git switch feature/java-assessment-template
-```
+### Recruiter and reviewer workflow
 
-Run **Preview: Java assessment template** again. Switching code branches does not delete either database. No `git reset --hard`, database deletion, or force-push is needed.
+1. Sign in as reviewer using the configured reviewer code. Open **Assessment templates**, inspect each version and approve it. Java approval runs its public and hidden reference tests; non-coding approval does not require Docker.
+2. Recruiter opens **Create interview**, chooses an approved template, enters interview details and creates invitations. Choosing from the catalogue opens the same form.
+3. Candidate completes the assessment with autosave and server deadline submission.
+4. Reviewer uses **Answers & scoring** for automatic results and question-level rubric scoring, then **Final feedback** to publish. Scores, completed required coding tests and a recommendation are required. Reviewer notes are optional. Recruiters can read the evaluation but cannot override template scores.
+5. The overall rating is round(total / 20), bounded to 1?5. It combines automatic and reviewer points; it is not a separate human score. Published evaluations remain read-only.
 
-The automated template workflow tests use an isolated in-memory database and a test coding worker. They validate approval gates, hidden-key isolation, deadlines, scoring and publication, not real Docker execution. The Docker reference validation must still pass on the actual machine before the template can be used.
+### Preview isolation and rollback
+
+The optional **Preview: Java assessment template** configuration still uses **backend/data/java-template/interviews.mv.db** and its own invitation key. Preview records are not copied into main. Sign out and sign in again when changing databases because stored browser tokens belong to one database.
+
+Before promotion, the completed feature was checkpointed at **checkpoint/pre-main-catalogue-promotion**. The original baseline remains **checkpoint/pre-java-template**. Database backups under **backend/data/backups/** include each database and invitation key. Keep code and database versions paired when rolling back; do not overwrite the main database with preview files.
+
+Set INTERVIEW_CATALOGUE_ENABLED=false to disable catalogue operations without deleting the schema or existing records. Existing custom question-bank interviews continue to work. Source and scoring guidance for the new catalogue are in [docs/assessment-catalogue.md](docs/assessment-catalogue.md).
 
 ## Separate reviewer workspaces
 

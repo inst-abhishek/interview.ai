@@ -10,7 +10,7 @@
 
   <p *ngIf="error" class="notice" role="alert">{{error}}</p>
   <p *ngIf="notice" class="review-success" role="status">{{notice}}</p>
-  <p *ngIf="!enabled&&!busy" class="empty-catalogue">Start the "Preview: Java assessment template" launch option to use the isolated catalogue.</p>
+  <p *ngIf="!enabled&&!busy" class="empty-catalogue">The assessment catalogue is disabled. Ask your administrator to enable it.</p>
 
 
   <ng-container *ngIf="!activeTemplate&&enabled">
@@ -37,19 +37,19 @@
       <span *ngFor="let skill of t.skills">{{skill}}</span>
     </div>
 
-    <div *ngIf="!t.runnerEnabled" class="runner-notice">
+    <div *ngIf="t.codingRequired!==false&&!t.runnerEnabled" class="runner-notice">
       <strong>Code runner setup required</strong>
       <p>{{role==='reviewer'?'Code execution must be available before this assessment can be validated and approved.':'A technical reviewer must complete validation before this assessment can be assigned.'}}</p>
       <details *ngIf="role==='reviewer'">
         <summary>Local setup instructions</summary>
-        <p>Complete <code>docs/Setup-Java-Coding.ps1</code>, then restart the preview with <code>INTERVIEW_CODING_ENABLED=true</code>.</p>
+        <p>Complete <code>docs/Setup-Java-Coding.ps1</code>, then restart the backend with <code>INTERVIEW_CODING_ENABLED=true</code>.</p>
       </details>
     </div>
 
     <footer class="template-actions" *ngIf="role==='reviewer'">
       
-      <button type="button" (click)="approve(t)" [disabled]="busy||!t.runnerEnabled||t.status==='APPROVED'||t.status==='RETIRED'">{{busy?'Validating...':t.status==='APPROVED'?'Assessment approved':'Validate & approve'}}</button>
-      <span *ngIf="!t.runnerEnabled" class="action-hint">Approval is available after runner setup.</span>
+      <button type="button" (click)="approve(t)" [disabled]="busy||(t.codingRequired!==false&&!t.runnerEnabled)||t.status==='APPROVED'||t.status==='RETIRED'">{{busy?'Validating...':t.status==='APPROVED'?'Assessment approved':(t.codingRequired===false?'Approve assessment':'Validate & approve')}}</button>
+      <span *ngIf="t.codingRequired!==false&&!t.runnerEnabled" class="action-hint">Approval is available after runner setup.</span>
     </footer>
     <footer class="template-actions" *ngIf="role==='recruiter'">
       <button type="button" (click)="choose(t)" [disabled]="busy||t.status!=='APPROVED'">Choose assessment</button>

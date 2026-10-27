@@ -1,6 +1,6 @@
 ﻿import {Component,Input,Output,EventEmitter,OnInit} from '@angular/core';
 import {CommonModule} from '@angular/common';import {FormsModule} from '@angular/forms';
-export type Template={version:string;title:string;description:string;durationMinutes:number;skills:string[];questionCount:number;status:string;runnerEnabled:boolean;role?:string;updatedAt?:number|null};
+export type Template={version:string;title:string;description:string;durationMinutes:number;skills:string[];questionCount:number;status:string;runnerEnabled:boolean;codingRequired?:boolean;role?:string;updatedAt?:number|null};
 type Queue={items:Template[];page:number;size:number;total:number;totalPages:number;allCount:number;pendingCount:number;approvedCount:number;retiredCount:number;enabled:boolean};
 @Component({selector:'exl-template-catalogue',standalone:true,imports:[CommonModule,FormsModule],templateUrl:'./template-catalogue.component.html',styleUrls:['./template-catalogue.component.css']})
 export class TemplateCatalogueComponent implements OnInit {
@@ -22,5 +22,5 @@ export class TemplateCatalogueComponent implements OnInit {
  get last(){return Math.min((this.page+1)*this.filters.size,this.total);}
  async inspect(t:Template){if(this.busy)return;this.error='';this.notice='';if(this.role==='recruiter'){this.activeTemplate=t;this.definition=undefined;return;}this.busy=true;try{this.definition=await this.api('/review/templates/'+t.version);this.activeTemplate=t;}catch(e){this.error=String(e);}finally{this.busy=false;}}
  backToQueue(){this.activeTemplate=undefined;this.definition=undefined;this.error='';}
- async approve(t:Template){if(this.busy)return;this.busy=true;this.error='';try{await this.api('/review/templates/'+t.version+'/approve',{});t.status='APPROVED';t.updatedAt=Date.now();this.notice='Reference tests passed. This version is approved for recruiter use.';await this.load();}catch(e){this.error=String(e);}finally{this.busy=false;}}
+ async approve(t:Template){if(this.busy)return;this.busy=true;this.error='';try{await this.api('/review/templates/'+t.version+'/approve',{});t.status='APPROVED';t.updatedAt=Date.now();this.notice=t.codingRequired===false?'Assessment approved for recruiter use.':'Reference tests passed. This version is approved for recruiter use.';await this.load();}catch(e){this.error=String(e);}finally{this.busy=false;}}
 }

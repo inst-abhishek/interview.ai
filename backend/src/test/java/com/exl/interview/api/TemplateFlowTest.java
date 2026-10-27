@@ -15,7 +15,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest(properties={"spring.datasource.url=jdbc:h2:mem:template-tests;DB_CLOSE_DELAY=-1","spring.sql.init.schema-locations=classpath:schema.sql,classpath:template-schema.sql","interview.catalogue-enabled=true","interview.recruiter-setup-code=template-setup","interview.reviewer-code=template-review","interview.invitation-key-file=./target/template-test.key","interview.template-initial-delay-ms=86400000","logging.level.root=ERROR"})
+@SpringBootTest(properties={"spring.datasource.url=jdbc:h2:mem:template-tests;DB_CLOSE_DELAY=-1","spring.sql.init.schema-locations=classpath:schema.sql,classpath:template-schema.sql","interview.catalogue-enabled=true","interview.catalogue-resources=java-backend-v1.json","interview.recruiter-setup-code=template-setup","interview.reviewer-code=template-review","interview.invitation-key-file=./target/template-test.key","interview.template-initial-delay-ms=86400000","logging.level.root=ERROR"})
 @AutoConfigureMockMvc
 class TemplateFlowTest {
  static final String VERSION="java-backend-mid-v1";

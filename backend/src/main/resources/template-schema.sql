@@ -12,3 +12,5 @@ ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS question_count INT;
 ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS updated_at BIGINT;
 CREATE INDEX IF NOT EXISTS template_queue_idx ON assessment_templates(status,updated_at,version);
 ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS description VARCHAR(4000);
+
+ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS coding_required BOOLEAN;

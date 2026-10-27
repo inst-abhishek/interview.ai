@@ -19,7 +19,7 @@ class ReviewPaginationTest {
  @BeforeEach void seed() throws Exception {
    db.update("DELETE FROM reviews");db.update("DELETE FROM sessions");db.update("DELETE FROM invitations");db.update("DELETE FROM interviews");db.update("DELETE FROM recruiters");db.update("DELETE FROM tokens");
    db.update("INSERT INTO recruiters VALUES ('r','hiring@example.com','Recruiter','not-used')");
-   for(String job:new String[]{"job-a","job-b"})db.update("INSERT INTO interviews VALUES (?,'r',?,'Description',1800,0,'[]',0)",job,job.equals("job-a")?"Backend Engineer":"Frontend Engineer");
+   for(String job:new String[]{"job-a","job-b"})db.update("INSERT INTO interviews (id,recruiter_id,title,description,duration_seconds,scheduled_at,questions,created_at) VALUES (?,'r',?,'Description',1800,0,'[]',0)",job,job.equals("job-a")?"Backend Engineer":"Frontend Engineer");
    for(int i=0;i<35;i++){
      String id=String.format("list-%03d",i),inv="inv-"+i,job=i%2==0?"job-a":"job-b";
      db.update("INSERT INTO invitations (id,interview_id,candidate_name,candidate_email,code_hash,expires_at,session_id,created_at) VALUES (?,?,?,?,?,?,?,?)",inv,job,i==34?"Percent %_ Candidate":"Candidate "+i,"candidate"+i+"@example.com","hash-"+i,BASE+99999999,id,BASE);
