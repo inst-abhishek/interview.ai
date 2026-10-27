@@ -33,6 +33,8 @@ export class TemplateEvaluationComponent implements OnInit,OnChanges {
  get scoredManual(){return this.manualIds.filter(id=>this.questionScored(id)).length;}
  get manualPoints(){return (this.data?.rubric||[]).reduce((sum:number,r:any)=>sum+(this.validPoints(r)?r.points:0),0);}
  get manualMax(){return (this.data?.rubric||[]).reduce((sum:number,r:any)=>sum+r.maxPoints,0);}
+ get canProceedToFeedback(){return Boolean(this.data?.available)&&this.role==='reviewer'&&!this.busy&&this.remainingCriteria===0;}
+ proceedToFeedback(){if(this.canProceedToFeedback)this.navigate.emit('feedback');}
  get remainingCriteria(){return (this.data?.rubric||[]).filter((r:any)=>!this.validPoints(r)).length;}
  get codingReady(){return ['DONE','NOT_REQUIRED'].includes(this.data?.codingState)&&typeof this.data?.codingPoints==='number';}
  get total(){return this.remainingCriteria||!this.codingReady?null:Math.round((this.data.mcqPoints+this.data.codingPoints+this.manualPoints)*100)/100;}

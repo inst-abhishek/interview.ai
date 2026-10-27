@@ -1,11 +1,12 @@
 ﻿<section class="panel catalogue-panel" aria-labelledby="catalogue-title">
+  <button *ngIf="activeTemplate" type="button" class="app-back" (click)="backToQueue()" [disabled]="busy" aria-label="Back to assessment template queue" title="Back to assessment template queue"><span aria-hidden="true">&larr;</span><span>Back</span></button>
   <header class="catalogue-heading">
     <div>
       <span class="eyebrow">VERSIONED ASSESSMENTS</span>
       <h2 id="catalogue-title">{{activeTemplate?'Assessment template details':role==='reviewer'?'Template review queue':'Choose an assessment'}}</h2>
       <p>{{activeTemplate?'Inspect this version before validation or assignment.':'Search by title, role, skill or version. Open one assessment at a time.'}}</p>
     </div>
-    <button *ngIf="!activeTemplate" type="button" class="secondary" (click)="load()" [disabled]="busy" aria-label="Refresh template queue">Refresh queue</button><button *ngIf="activeTemplate" type="button" class="secondary" (click)="backToQueue()" [disabled]="busy">Back to template queue</button>
+    <button *ngIf="!activeTemplate" type="button" class="secondary" (click)="load()" [disabled]="busy" aria-label="Refresh template queue">Refresh queue</button>
   </header>
 
   <p *ngIf="error" class="notice" role="alert">{{error}}</p>
@@ -58,7 +59,7 @@
   </article>
 
   <section *ngIf="definition&&activeTemplate" class="technical-content">
-    <div class="technical-heading"><div><span class="eyebrow">TECHNICAL CONTENT</span><h3>Review {{definition.version}}</h3></div><button type="button" class="secondary" (click)="backToQueue()">Back to template queue</button></div>
+    <div class="technical-heading"><div><span class="eyebrow">TECHNICAL CONTENT</span><h3>Review {{definition.version}}</h3></div></div>
     <p class="review-instructions">{{definition.reviewerInstructions}}</p>
     <details class="question-detail" *ngFor="let q of definition.items">
       <summary>{{q.kind}} &middot; {{q.id}} &middot; {{q.maxPoints}} points</summary>
