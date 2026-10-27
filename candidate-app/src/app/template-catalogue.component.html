@@ -1,0 +1,74 @@
+﻿<section class="panel catalogue-panel" aria-labelledby="catalogue-title">
+  <header class="catalogue-heading">
+    <div>
+      <span class="eyebrow">VERSIONED ASSESSMENTS</span>
+      <h2 id="catalogue-title">Java assessment preview</h2>
+      <p>Choose an assessment or inspect its technical content before approval.</p>
+    </div>
+    <button type="button" class="secondary" (click)="load()" [disabled]="busy" aria-label="Refresh assessment catalogue">Refresh catalogue</button>
+  </header>
+
+  <p *ngIf="error" class="notice" role="alert">{{error}}</p>
+  <p *ngIf="notice" class="review-success" role="status">{{notice}}</p>
+  <p *ngIf="!templates.length&&!busy" class="empty-catalogue">Start the "Preview: Java assessment template" launch option to use the isolated catalogue.</p>
+
+  <article class="template-card" *ngFor="let t of templates">
+    <div class="template-heading">
+      <div>
+        <span class="template-version">{{t.version}}</span>
+        <h3>{{displayTitle(t.title)}}</h3>
+      </div>
+      <span class="template-status" [class.approved]="t.status==='APPROVED'">{{t.status==='APPROVED'?'Approved':'Awaiting approval'}}</span>
+    </div>
+    <p class="template-description">{{t.description}}</p>
+    <div class="template-meta" aria-label="Assessment details">
+      <span>{{t.durationMinutes}} minutes</span>
+      <span>{{t.questionCount}} questions</span>
+      <span *ngFor="let skill of t.skills">{{skill}}</span>
+    </div>
+
+    <div *ngIf="!t.runnerEnabled" class="runner-notice">
+      <strong>Code runner setup required</strong>
+      <p>{{role==='reviewer'?'Code execution must be available before this assessment can be validated and approved.':'A technical reviewer must complete validation before this assessment can be assigned.'}}</p>
+      <details *ngIf="role==='reviewer'">
+        <summary>Local setup instructions</summary>
+        <p>Complete <code>docs/Setup-Java-Coding.ps1</code>, then restart the preview with <code>INTERVIEW_CODING_ENABLED=true</code>.</p>
+      </details>
+    </div>
+
+    <footer class="template-actions" *ngIf="role==='reviewer'">
+      <button type="button" class="secondary" (click)="inspect(t)" [disabled]="busy">Inspect technical content</button>
+      <button type="button" (click)="approve(t)" [disabled]="busy||!t.runnerEnabled||t.status==='APPROVED'">{{busy?'Validating...':t.status==='APPROVED'?'Assessment approved':'Validate & approve'}}</button>
+      <span *ngIf="!t.runnerEnabled" class="action-hint">Approval is available after runner setup.</span>
+    </footer>
+    <footer class="template-actions" *ngIf="role==='recruiter'">
+      <button type="button" (click)="choose(t)" [disabled]="busy||t.status!=='APPROVED'">Choose assessment</button>
+      <span *ngIf="t.status!=='APPROVED'" class="action-hint">Awaiting technical reviewer approval.</span>
+    </footer>
+  </article>
+
+  <form *ngIf="selected&&role==='recruiter'" class="schedule-form" (ngSubmit)="create()">
+    <h3>Schedule {{displayTitle(selected.title)}}</h3>
+    <div class="schedule-fields">
+      <label>Job / interview title<input name="templateTitle" [(ngModel)]="title" required maxlength="200"></label>
+      <label>Scheduled start (local time)<input type="datetime-local" name="templateSchedule" [(ngModel)]="schedule" required></label>
+    </div>
+    <div class="schedule-actions">
+      <button type="button" class="secondary" (click)="selected=undefined" [disabled]="busy">Cancel</button>
+      <button type="submit" [disabled]="busy">Create interview</button>
+    </div>
+  </form>
+
+  <section *ngIf="definition" class="technical-content">
+    <div class="technical-heading"><div><span class="eyebrow">TECHNICAL CONTENT</span><h3>Review {{definition.version}}</h3></div><button type="button" class="secondary" (click)="definition=undefined">Close content</button></div>
+    <p class="review-instructions">{{definition.reviewerInstructions}}</p>
+    <details class="question-detail" *ngFor="let q of definition.items">
+      <summary>{{q.kind}} &middot; {{q.id}} &middot; {{q.maxPoints}} points</summary>
+      <p class="preserve">{{q.text}}</p>
+      <p *ngIf="q.correctAnswer"><strong>Answer key:</strong> {{q.correctAnswer}}<br>{{q.explanation}}</p>
+      <div *ngFor="let c of q.rubric"><strong>{{c.label}} ({{c.maxPoints}} points)</strong><p>{{c.guidance}}</p></div>
+      <pre *ngIf="q.referenceSolution">{{q.referenceSolution}}</pre>
+      <p *ngIf="q.publicTests.length">{{q.publicTests.length}} public tests &middot; {{q.hiddenTests.length}} hidden tests</p>
+    </details>
+  </section>
+</section>
