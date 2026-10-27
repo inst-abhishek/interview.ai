@@ -1,0 +1,23 @@
+<section class="code-workspace" aria-label="Coding challenge">
+ <div class="mobile-switch" role="group" aria-label="Coding workspace view"><button type="button" [class.active]="mobilePane==='problem'" (click)="mobilePane='problem'">Problem</button><button type="button" [class.active]="mobilePane==='code'" (click)="mobilePane='code'">Code</button></div>
+ <div class="coding-split">
+  <section class="problem-pane" [class.mobile-hidden]="mobilePane!=='problem'">
+   <nav class="problem-tabs" aria-label="Problem details"><button type="button" [class.active]="tab==='problem'" [attr.aria-pressed]="tab==='problem'" (click)="tab='problem'">Problem</button><button type="button" [class.active]="tab==='constraints'" [attr.aria-pressed]="tab==='constraints'" (click)="tab='constraints'">Constraints</button><button type="button" [class.active]="tab==='examples'" [attr.aria-pressed]="tab==='examples'" (click)="tab='examples'">Examples</button></nav>
+   <div class="problem-scroll">
+    <ng-container *ngIf="tab==='problem'"><h4>Problem statement</h4><p class="statement">{{problem}}</p><p class="help">Read the examples and constraints, then complete Main.java.</p></ng-container>
+    <ng-container *ngIf="tab==='constraints'"><h4>Execution requirements</h4><ul><li>Use Java 21 with a public class Main and a public static void main(String[] args).</li><li>Read from standard input and write the result to standard output.</li><li>Use only the Java standard library. No packages, files or network access.</li><li>Execution limit: 3 seconds. Java heap limit: 128 MB.</li><li>Source limit: 20,000 characters. Follow the input limits in the problem statement.</li></ul></ng-container>
+    <ng-container *ngIf="tab==='examples'||tab==='problem'"><h4>Public examples</h4><article class="example" *ngFor="let t of metadata?.publicTests;let i=index"><strong>Example {{i+1}}</strong><span>Input</span><pre>{{t.input||'(empty input)'}}</pre><span>Expected output</span><pre>{{t.expected}}</pre></article><p *ngIf="!metadata" class="help">Loading examples...</p></ng-container>
+   </div>
+  </section>
+  <section class="editor-pane" [class.mobile-hidden]="mobilePane!=='code'">
+   <header class="editor-toolbar"><strong>Main.java</strong><span>Java 21</span></header>
+   <div #editorHost class="monaco-host" aria-label="Java code editor"></div><p *ngIf="!editorReady&&!error" class="editor-loading" role="status">Loading code editor...</p>
+   <footer class="editor-actions"><button type="button" class="secondary" (click)="resetPending=true" [disabled]="disabled||!metadata||!editorReady">Reset code</button><button type="button" (click)="run()" [disabled]="disabled||running||!editorReady||!metadata?.runnerEnabled">{{running?'Running...':'Run code'}}</button></footer>
+   <div *ngIf="resetPending" class="reset-confirm" role="alert"><span>Replace your current code with the starter code?</span><button type="button" (click)="resetCode()" [disabled]="disabled">Reset</button><button type="button" class="secondary" (click)="resetPending=false">Cancel</button></div>
+   <p class="runner-help">Run code checks public examples. Save &amp; next saves your solution; Submit assessment submits all questions for final testing.</p>
+   <p *ngIf="metadata&&!metadata.runnerEnabled" class="notice">Code execution is currently unavailable. Your code can still be saved.</p>
+   <p *ngIf="error" class="notice" role="alert">{{error}}</p>
+   <details class="test-results" [open]="!!state"><summary>Test results <span *ngIf="result">{{result.passed}} / {{result.total}} passed</span></summary><p *ngIf="!state" class="help">Run your code to check the public examples.</p><p *ngIf="state" role="status">{{state}} � Results apply to the code snapshot from your last run.</p><article *ngFor="let t of result?.tests" class="test-case"><strong>{{t.id}} � {{t.state}}</strong><details><summary>View output</summary><pre>{{t.output||'(no output)'}}</pre></details></article><p *ngIf="result" class="help">{{result.message}}</p></details>
+  </section>
+ </div>
+</section>

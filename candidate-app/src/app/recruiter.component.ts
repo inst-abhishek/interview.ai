@@ -1,7 +1,7 @@
 import {Component, EventEmitter, OnInit, Output} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
-import {TemplateCatalogueComponent} from './template-catalogue.component';
+import {TemplateCatalogueComponent, Template} from './template-catalogue.component';
 import {TemplateEvaluationComponent} from './template-evaluation.component';
 type Account={id:string;name:string;email:string};
 type Question={id:string;kind:string;text:string;choices:string[];editable:boolean};
@@ -15,6 +15,7 @@ export class RecruiterComponent implements OnInit {
  token=sessionStorage.getItem('recruiterToken')||'';account?:Account;registering=false;busy=false;error='';notice='';
  name='';email='';password='';setupCode='';tab:'interviews'|'questions'|'templates'='interviews';
  interviews:Interview[]=[];questions:Question[]=[];selected?:Interview;candidates:Candidate[]=[];submission?:Submission;
+ assessmentMode:'template'|'custom'='template';chosenTemplate?:Template;choosingTemplate=true;
  showInterviewForm=false;title='';description='';durationMinutes=30;scheduledAt=this.localDate(Date.now());selectedQuestions:string[]=[];
  questionId='';questionKind='TECHNICAL';questionText='';choicesText='';questionSearch='';kindFilter='';
  candidateName='';candidateEmail='';expiresAt=this.localDate(Date.now()+86400000);invitation?:Invitation;regenerating?:Candidate;replacementExpiry='';
@@ -28,8 +29,12 @@ export class RecruiterComponent implements OnInit {
  private async refresh(){const results=await Promise.all([this.api<Interview[]>('/interviews'),this.api<Question[]>('/questions')]);this.interviews=results[0];this.questions=results[1];}
  async reload(){await this.run(async()=>{await this.refresh();if(this.selected)this.candidates=await this.api<Candidate[]>(`/interviews/${this.selected.id}/candidates`);});}
  async selectInterview(item:Interview){await this.run(async()=>{this.selected=item;this.regenerating=undefined;this.candidates=[];this.submission=undefined;this.invitation=undefined;this.expiresAt=this.localDate(Math.max(Date.now(),item.scheduledAt)+86400000);this.candidates=await this.api<Candidate[]>(`/interviews/${item.id}/candidates`);});}
- async onTemplateCreated(id:string){await this.refresh();const interview=this.interviews.find(i=>i.id===id);if(interview){this.tab='interviews';await this.selectInterview(interview);this.notice='Approved template assigned. Generate a candidate invitation below.';}}
- async createInterview(){await this.run(async()=>{const scheduledAt=new Date(this.scheduledAt).getTime();if(!Number.isFinite(scheduledAt))throw Error('Choose a scheduled start');const r=await this.api<Interview>('/interviews',{title:this.title,description:this.description,durationMinutes:this.durationMinutes,scheduledAt,questionIds:this.selectedQuestions});this.interviews=[r,...this.interviews];this.selected=r;this.candidates=[];this.submission=undefined;this.invitation=undefined;this.showInterviewForm=false;this.title='';this.description='';this.selectedQuestions=[];this.expiresAt=this.localDate(Math.max(Date.now(),r.scheduledAt)+86400000);this.notice='Interview created. Invite your first candidate below.';});}
+ openInterviewForm(){this.showInterviewForm=!this.showInterviewForm;}
+ chooseAssessment(t:Template){if(t.status!=='APPROVED')return;this.chosenTemplate=t;this.assessmentMode='template';this.choosingTemplate=false;this.tab='interviews';this.showInterviewForm=true;if(!this.title.trim())this.title=t.title;if(!this.description.trim())this.description=t.description;}
+ async createInterview(){await this.run(async()=>{const scheduledAt=new Date(this.scheduledAt).getTime();if(!Number.isFinite(scheduledAt))throw Error('Choose a scheduled start');let r:Interview;
+ if(this.assessmentMode==='template'){if(!this.chosenTemplate||this.chosenTemplate.status!=='APPROVED')throw Error('Choose an approved assessment');const result=await this.api<{id:string}>('/templates/'+this.chosenTemplate.version+'/interviews',{title:this.title,description:this.description,scheduledAt});await this.refresh();const created=this.interviews.find(i=>i.id===result.id);if(!created)throw Error('Interview created. Refresh the interview list to open it.');r=created;}
+ else{r=await this.api<Interview>('/interviews',{title:this.title,description:this.description,durationMinutes:this.durationMinutes,scheduledAt,questionIds:this.selectedQuestions});this.interviews=[r,...this.interviews];}
+ this.selected=r;this.candidates=[];this.submission=undefined;this.invitation=undefined;this.showInterviewForm=false;this.title='';this.description='';this.selectedQuestions=[];this.chosenTemplate=undefined;this.choosingTemplate=true;this.expiresAt=this.localDate(Math.max(Date.now(),r.scheduledAt)+86400000);this.notice='Interview created. Invite your first candidate below.';});}
  toggleQuestion(id:string){this.selectedQuestions=this.selectedQuestions.includes(id)?this.selectedQuestions.filter(q=>q!==id):[...this.selectedQuestions,id];}
  get filteredQuestions(){return this.questions.filter(q=>(!this.kindFilter||q.kind===this.kindFilter)&&q.text.toLowerCase().includes(this.questionSearch.toLowerCase()));}
  editQuestion(q:Question){this.questionId=q.id;this.questionKind=q.kind;this.questionText=q.text;this.choicesText=q.choices.join('\n');this.error='';this.notice='';}
@@ -44,5 +49,7 @@ export class RecruiterComponent implements OnInit {
  async openSubmission(c:Candidate){if(!c.sessionId)return;await this.run(async()=>{this.submission=await this.api<Submission>(`/submissions/${c.sessionId}`);this.score=this.submission.score??3;this.notes=this.submission.notes??'';this.recommendation=this.submission.recommendation??'';});}
  answerFor(id:string){return this.submission?.answers.find(a=>a.questionId===id)?.answer||'No answer submitted';}
  async saveReview(){if(!this.submission)return;await this.run(async()=>{this.submission=await this.api<Submission>(`/submissions/${this.submission!.sessionId}/review`,{score:this.score,notes:this.notes,recommendation:this.recommendation});this.notice='Review saved.';if(this.selected){try{this.candidates=await this.api<Candidate[]>(`/interviews/${this.selected.id}/candidates`);}catch{this.notice='Review saved. Refresh the candidate list when the connection returns.';}}});}
+ questionType(kind:string){return ({MCQ:'MCQ',CODING:'Coding',TECHNICAL:'Written response'} as Record<string,string>)[kind]||kind;}
+ recommendationLabel(value:string|null){return ({SHORTLIST:'Shortlist',HOLD:'Hold',REJECT:'Reject'} as Record<string,string>)[value||'']||'Pending';}
  stateLabel(state:string){return ({INVITED:'Invited',READY:'Ready',IN_PROGRESS:'In progress',SUBMITTED:'Submitted',EXPIRED:'Expired'} as Record<string,string>)[state]||state;}
 }

@@ -29,7 +29,8 @@
         "INTERVIEW_INVITATION_CODE": "exldemo",
         "INTERVIEW_REVIEWER_CODE": "reviewdemo",
         "INTERVIEW_RECRUITER_SETUP_CODE": "exl-recruiter-setup",
-        "SPRING_PROFILES_ACTIVE": "java-template"
+        "SPRING_PROFILES_ACTIVE": "java-template",
+        "INTERVIEW_CODING_ENABLED": "true"
       },
       "command": "mvn.cmd spring-boot:run"
     }

@@ -47,6 +47,19 @@ class TemplateFlowTest {
   post("/review/sessions/"+a.id()+"/template-evaluation",reviewer,Map.of("marks",fullMarks(evaluation),"notes","Changes","recommendation","HOLD","publish",false),409);
   String hidden=db.queryForObject("SELECT id FROM coding_runs WHERE session_id=? AND visibility='HIDDEN'",String.class,a.id());get("/sessions/"+a.id()+"/code-runs/"+hidden,a.token(),404);get("/review/sessions/"+a.id()+"/template-evaluation",a.token(),401);assertEquals(100,get("/recruiter/submissions/"+a.id()+"/template-evaluation",recruiter,200).get("total").asInt());
  }
+ @Test void templateSchedulingKeepsBriefAndApprovedContent()throws Exception{
+  approve();String id=post("/recruiter/templates/"+VERSION+"/interviews",recruiter,Map.of("title","My role","description","Team-specific brief","scheduledAt",0,"durationMinutes",5,"questionIds",List.of()),200).get("id").asText();
+  assertEquals("Team-specific brief",db.queryForObject("SELECT description FROM interviews WHERE id=?",String.class,id));
+  assertEquals(3600,db.queryForObject("SELECT duration_seconds FROM interviews WHERE id=?",Integer.class,id));
+  assertEquals(11,json.readTree(db.queryForObject("SELECT questions FROM interviews WHERE id=?",String.class,id)).size());
+  post("/recruiter/templates/"+VERSION+"/interviews",recruiter,Map.of("title","Too long","description","x".repeat(4001),"scheduledAt",0),400);
+ }
+ @Test void publicationAllowsOmittedReviewerNotes()throws Exception{
+  var a=start();answerAll(a);assessments.process();var evaluation=get("/review/sessions/"+a.id()+"/template-evaluation",reviewer,200);
+  var marks=new ArrayList<Map<String,Object>>();for(var row:evaluation.get("rubric"))marks.add(Map.of("questionId",row.get("questionId").asText(),"criterionId",row.get("criterionId").asText(),"points",0));
+  var published=post("/review/sessions/"+a.id()+"/template-evaluation",reviewer,Map.of("marks",marks,"recommendation","HOLD","publish",true),200);
+  assertEquals("PUBLISHED",published.get("state").asText());assertEquals("",published.get("notes").asText());assertTrue(published.get("complete").asBoolean());for(var row:published.get("rubric"))assertEquals("",row.get("notes").asText());
+ }
  @Test void approvalAndPublishRequireValidation()throws Exception{
   post("/recruiter/templates/"+VERSION+"/interviews",recruiter,Map.of("title","Not approved","scheduledAt",0),409);
   when(runner.run(anyString(),anyList())).thenReturn(new JavaCodeRunner.Result("UNAVAILABLE",0,6,List.of(),"Disabled"));post("/review/templates/"+VERSION+"/approve",reviewer,Map.of(),409);assertEquals("DRAFT",catalogue.summaries().getFirst().status());
