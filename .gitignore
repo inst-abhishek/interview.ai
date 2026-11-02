@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.angular/
+target/
+*.log
+.env
+.DS_Store
+backend/data/
+
+# Local environment overrides and unrelated recordings
+.env.*
+!.env.example
+docs/*.mp4

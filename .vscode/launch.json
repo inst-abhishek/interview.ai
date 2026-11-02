@@ -1,0 +1,34 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node-terminal",
+      "name": "Backend: Spring Boot",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "INTERVIEW_INVITATION_CODE": "exldemo",
+        "INTERVIEW_REVIEWER_CODE": "reviewdemo",
+        "INTERVIEW_RECRUITER_SETUP_CODE": "exl-recruiter-setup"
+      },
+      "command": "mvn.cmd spring-boot:run"
+    },
+    {
+      "type": "node-terminal",
+      "name": "Frontend: Angular",
+      "request": "launch",
+      "command": "npm.cmd start",
+      "cwd": "${workspaceFolder}/candidate-app"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full application (frontend + backend)",
+      "configurations": [
+        "Backend: Spring Boot",
+        "Frontend: Angular"
+      ],
+      "stopAll": true
+    }
+  ]
+}
