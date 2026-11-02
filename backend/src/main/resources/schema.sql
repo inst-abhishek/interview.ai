@@ -23,8 +23,6 @@ ALTER TABLE invitations ADD COLUMN IF NOT EXISTS encrypted_code CLOB;
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS submission_reason VARCHAR(30);
 CREATE INDEX IF NOT EXISTS sessions_expiry_idx ON sessions(state,deadline);
 CREATE INDEX IF NOT EXISTS sessions_review_list_idx ON sessions(state,submitted_at,id);
-<<<<<<< HEAD
-=======
 ALTER TABLE recruiters ADD COLUMN IF NOT EXISTS staff_role VARCHAR(20) NOT NULL DEFAULT 'RECRUITER';
 ALTER TABLE recruiters ADD COLUMN IF NOT EXISTS active BOOLEAN NOT NULL DEFAULT TRUE;
 CREATE TABLE IF NOT EXISTS reviewer_assignments (interview_id VARCHAR(80) PRIMARY KEY REFERENCES interviews(id), reviewer_id VARCHAR(80) NOT NULL REFERENCES recruiters(id));
@@ -37,4 +35,3 @@ CREATE INDEX IF NOT EXISTS candidate_pool_owner_idx ON candidate_pool(recruiter_
 CREATE TABLE IF NOT EXISTS invitation_batches (id VARCHAR(80) PRIMARY KEY, recruiter_id VARCHAR(80) NOT NULL REFERENCES recruiters(id), interview_id VARCHAR(80) NOT NULL REFERENCES interviews(id), request_key VARCHAR(80) NOT NULL, payload_hash VARCHAR(64) NOT NULL, created_at BIGINT NOT NULL, UNIQUE(recruiter_id,request_key));
 CREATE TABLE IF NOT EXISTS invitation_batch_items (batch_id VARCHAR(80) NOT NULL REFERENCES invitation_batches(id), candidate_id VARCHAR(80) NOT NULL REFERENCES candidate_pool(id), invitation_id VARCHAR(80) NOT NULL REFERENCES invitations(id), outcome VARCHAR(30) NOT NULL, PRIMARY KEY(batch_id,candidate_id));
 CREATE TABLE IF NOT EXISTS invitation_delivery (invitation_id VARCHAR(80) PRIMARY KEY REFERENCES invitations(id), status VARCHAR(30) NOT NULL, kind VARCHAR(20) NOT NULL, attempts INT NOT NULL DEFAULT 0, updated_at BIGINT NOT NULL, last_error VARCHAR(300));
->>>>>>> 6eef7fb1fd265ac6980ab5f9f8336a8ffd582b41

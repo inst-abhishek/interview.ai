@@ -20,6 +20,7 @@ export class RecruiterComponent implements OnInit {
  assessmentMode:'template'|'custom'='template';chosenTemplate?:Template;choosingTemplate=true;
  showInterviewForm=false;title='';description='';durationMinutes=30;scheduledAt=this.localDate(Date.now());selectedQuestions:string[]=[];
  questionId='';questionKind='TECHNICAL';questionText='';choicesText='';questionSearch='';kindFilter='';
+ candidateName='';candidateEmail='';expiresAt=this.localDate(Date.now()+86400000);invitation?:Invitation;regenerating?:Candidate;replacementExpiry='';
  evaluationSummary?:EvaluationSummary;evaluationSubmittedAt:number|null=null;
  score=3;notes='';recommendation='';
  private localDate(time:number){const d=new Date(time);return new Date(time-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
