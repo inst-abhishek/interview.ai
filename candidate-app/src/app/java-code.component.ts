@@ -1,29 +1,248 @@
-import {Component,Input,Output,EventEmitter,OnInit,OnDestroy,OnChanges,AfterViewInit,ViewChild,ElementRef,NgZone} from '@angular/core';import {CommonModule} from '@angular/common';
+import {
+  Component,
+  Input,
+  Output,
+  EventEmitter,
+  OnInit,
+  OnDestroy,
+  OnChanges,
+  AfterViewInit,
+  ViewChild,
+  ElementRef,
+  NgZone,
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
 import type * as Monaco from 'monaco-editor';
-let monacoLoading:Promise<typeof Monaco>|undefined;
-function loadMonaco():Promise<typeof Monaco>{
- if(!monacoLoading)monacoLoading=new Promise<typeof Monaco>((resolve,reject)=>{
-  const script=document.createElement('script');script.src=new URL('assets/monaco/vs/loader.js',document.baseURI).href;
-  script.onload=()=>{const amd=(window as any).require;amd.config({paths:{vs:new URL('assets/monaco/vs',document.baseURI).href}});amd(['vs/editor/editor.main'],()=>resolve((window as any).monaco),reject);};script.onerror=()=>reject(Error('Code editor could not load. Reload the page to retry.'));document.head.appendChild(script);
- }).catch(error=>{monacoLoading=undefined;throw error;});return monacoLoading!;
+let monacoLoading: Promise<typeof Monaco> | undefined;
+function loadMonaco(): Promise<typeof Monaco> {
+  if (!monacoLoading)
+    monacoLoading = new Promise<typeof Monaco>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = new URL('assets/monaco/vs/loader.js', document.baseURI).href;
+      script.onload = () => {
+        const amd = (window as any).require;
+        amd.config({ paths: { vs: new URL('assets/monaco/vs', document.baseURI).href } });
+        amd(['vs/editor/editor.main'], () => resolve((window as any).monaco), reject);
+      };
+      script.onerror = () => reject(Error('Code editor could not load. Reload the page to retry.'));
+      document.head.appendChild(script);
+    }).catch((error) => {
+      monacoLoading = undefined;
+      throw error;
+    });
+  return monacoLoading!;
 }
-@Component({selector:'exl-java-code',standalone:true,imports:[CommonModule],templateUrl:'./java-code.component.html',styleUrls:['./java-code.component.css']})
-export class JavaCodeComponent implements OnInit,OnDestroy,OnChanges,AfterViewInit {
- constructor(private zone:NgZone){}
- private outside<T>(work:()=>T):T{return this.zone?this.zone.runOutsideAngular(work):work();}
- private inside<T>(work:()=>T):T{return this.zone?this.zone.run(work):work();}
- @Input() problem='';@Input() source='';@Input() sessionId='';@Input() questionId='';@Input() token='';@Input() disabled=false;@Output() sourceChange=new EventEmitter<string>();metadata:any;result:any;state='';error='';running=false;private poll?:ReturnType<typeof setTimeout>;private destroyed=false;
- @ViewChild('editorHost') editorHost?:ElementRef<HTMLDivElement>;
- tab:'problem'|'constraints'|'examples'='problem';mobilePane:'problem'|'code'='code';editorReady=false;resetPending=false;
- private editor?:Monaco.editor.IStandaloneCodeEditor;private model?:Monaco.editor.ITextModel;private suppress=false;private loadId=0;
- ngOnInit(){void this.loadQuestion();}
- ngOnChanges(changes:any){if(changes.questionId&&!changes.questionId.firstChange){this.cancelRun();void this.loadQuestion();}if(changes.source&&this.editor&&this.editor.getValue()!==this.source){this.suppress=true;this.outside(()=>this.editor!.setValue(this.source));this.suppress=false;}if(changes.disabled)this.outside(()=>this.editor?.updateOptions({readOnly:this.disabled}));}
- async ngAfterViewInit(){try{const monaco=await this.outside(()=>loadMonaco());if(this.destroyed||!this.editorHost)return;const host=this.editorHost.nativeElement;this.outside(()=>{monaco.editor.defineTheme('interview-dark',{base:'vs-dark',inherit:true,rules:[],colors:{'editor.background':'#061628','editor.foreground':'#d5e3ef','editorLineNumber.foreground':'#6b8ba8','editor.lineHighlightBackground':'#10243a','editorCursor.foreground':'#ff8d51'}});this.model=monaco.editor.createModel(this.source||this.metadata?.starterCode||'','java');this.editor=monaco.editor.create(host,{model:this.model,theme:'interview-dark',automaticLayout:true,fontSize:14,lineHeight:23,minimap:{enabled:false},scrollBeyondLastLine:false,tabSize:4,insertSpaces:true,readOnly:this.disabled,ariaLabel:'Java source code',wordWrap:'on',padding:{top:16},quickSuggestions:false,parameterHints:{enabled:false}});this.editor.onDidChangeModelContent(()=>{if(this.suppress)return;const value=this.editor!.getValue();if(value.length>20000){this.editor!.getModel()!.undo();this.inside(()=>{this.error='Code is limited to 20,000 characters.';});return;}this.inside(()=>{this.source=value;this.sourceChange.emit(value);});});});this.editorReady=true;}catch(e){this.error=String(e);}}
- private async loadQuestion(){const id=++this.loadId;this.metadata=undefined;this.result=undefined;this.state='';this.error='';this.resetPending=false;try{const metadata=await this.api('/coding/'+this.questionId);if(this.destroyed||id!==this.loadId)return;this.metadata=metadata;if(!this.source&&this.editor){this.suppress=true;this.outside(()=>this.editor!.setValue(metadata.starterCode));this.suppress=false;}}catch(e){if(id===this.loadId)this.error=String(e);}}
- resetCode(){if(this.disabled||!this.metadata)return;this.source=this.metadata.starterCode;this.sourceChange.emit(this.source);this.suppress=true;this.outside(()=>this.editor?.setValue(this.source));this.suppress=false;this.result=undefined;this.state='';this.resetPending=false;}
- private cancelRun(){if(this.poll)clearTimeout(this.poll);this.poll=undefined;this.running=false;}
- private async api(path:string,body?:unknown){const r=await fetch('http://127.0.0.1:8080/api/sessions/'+this.sessionId+path,{method:body===undefined?'GET':'POST',headers:{Authorization:'Bearer '+this.token,'Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});if(!r.ok){let message='Coding request failed ('+r.status+')';try{message=(await r.json()).message||message;}catch{}throw Error(message);}return r.json();}
- async run(){if(this.running||this.disabled)return;this.running=true;this.error='';this.result=undefined;const question=this.questionId;try{const job=await this.api('/code-runs',{questionId:this.questionId,source:this.editor?.getValue()??this.source});if(this.destroyed||question!==this.questionId)return;this.state=job.state;void this.check(job.id,0,question);}catch(e){this.error=String(e);this.running=false;}}
- private async check(id:string,attempt:number,question=this.questionId){if(this.destroyed||question!==this.questionId)return;try{const run=await this.api('/code-runs/'+id);if(this.destroyed||question!==this.questionId)return;this.state=run.state;this.result=run.result;if(run.state==='DONE'||run.state==='ERROR'){this.running=false;return;}if(attempt>=120){this.running=false;this.error='The worker is still pending. Your saved code is unaffected; contact the coordinator if the runner remains unavailable.';return;}this.poll=setTimeout(()=>void this.check(id,attempt+1,question),1000);}catch(e){this.error=String(e);this.running=false;}}
- ngOnDestroy(){this.destroyed=true;this.cancelRun();this.editor?.dispose();this.model?.dispose();}
+@Component({
+  selector: 'exl-java-code',
+  standalone: true,
+  imports: [CommonModule],
+  templateUrl: './java-code.component.html',
+  styleUrls: ['./java-code.component.css'],
+})
+export class JavaCodeComponent implements OnInit, OnDestroy, OnChanges, AfterViewInit {
+  constructor(private zone: NgZone) {}
+  private outside<T>(work: () => T): T {
+    return this.zone ? this.zone.runOutsideAngular(work) : work();
+  }
+  private inside<T>(work: () => T): T {
+    return this.zone ? this.zone.run(work) : work();
+  }
+  @Input() problem = '';
+  @Input() source = '';
+  @Input() sessionId = '';
+  @Input() questionId = '';
+  @Input() token = '';
+  @Input() disabled = false;
+  @Output() sourceChange = new EventEmitter<string>();
+  metadata: any;
+  result: any;
+  state = '';
+  error = '';
+  running = false;
+  private poll?: ReturnType<typeof setTimeout>;
+  private destroyed = false;
+  @ViewChild('editorHost') editorHost?: ElementRef<HTMLDivElement>;
+  tab: 'problem' | 'constraints' | 'examples' = 'problem';
+  mobilePane: 'problem' | 'code' = 'code';
+  editorReady = false;
+  resetPending = false;
+  private editor?: Monaco.editor.IStandaloneCodeEditor;
+  private model?: Monaco.editor.ITextModel;
+  private suppress = false;
+  private loadId = 0;
+  ngOnInit() {
+    void this.loadQuestion();
+  }
+  ngOnChanges(changes: any) {
+    if (changes.questionId && !changes.questionId.firstChange) {
+      this.cancelRun();
+      void this.loadQuestion();
+    }
+    if (changes.source && this.editor && this.editor.getValue() !== this.source) {
+      this.suppress = true;
+      this.outside(() => this.editor!.setValue(this.source));
+      this.suppress = false;
+    }
+    if (changes.disabled)
+      this.outside(() => this.editor?.updateOptions({ readOnly: this.disabled }));
+  }
+  async ngAfterViewInit() {
+    try {
+      const monaco = await this.outside(() => loadMonaco());
+      if (this.destroyed || !this.editorHost) return;
+      const host = this.editorHost.nativeElement;
+      this.outside(() => {
+        monaco.editor.defineTheme('interview-dark', {
+          base: 'vs-dark',
+          inherit: true,
+          rules: [],
+          colors: {
+            'editor.background': '#061628',
+            'editor.foreground': '#d5e3ef',
+            'editorLineNumber.foreground': '#6b8ba8',
+            'editor.lineHighlightBackground': '#10243a',
+            'editorCursor.foreground': '#ff8d51',
+          },
+        });
+        this.model = monaco.editor.createModel(
+          this.source || this.metadata?.starterCode || '',
+          'java'
+        );
+        this.editor = monaco.editor.create(host, {
+          model: this.model,
+          theme: 'interview-dark',
+          automaticLayout: true,
+          fontSize: 14,
+          lineHeight: 23,
+          minimap: { enabled: false },
+          scrollBeyondLastLine: false,
+          tabSize: 4,
+          insertSpaces: true,
+          readOnly: this.disabled,
+          ariaLabel: 'Java source code',
+          wordWrap: 'on',
+          padding: { top: 16 },
+          quickSuggestions: false,
+          parameterHints: { enabled: false },
+        });
+        this.editor.onDidChangeModelContent(() => {
+          if (this.suppress) return;
+          const value = this.editor!.getValue();
+          if (value.length > 20000) {
+            this.editor!.getModel()!.undo();
+            this.inside(() => {
+              this.error = 'Code is limited to 20,000 characters.';
+            });
+            return;
+          }
+          this.inside(() => {
+            this.source = value;
+            this.sourceChange.emit(value);
+          });
+        });
+      });
+      this.editorReady = true;
+    } catch (e) {
+      this.error = String(e);
+    }
+  }
+  private async loadQuestion() {
+    const id = ++this.loadId;
+    this.metadata = undefined;
+    this.result = undefined;
+    this.state = '';
+    this.error = '';
+    this.resetPending = false;
+    try {
+      const metadata = await this.api('/coding/' + this.questionId);
+      if (this.destroyed || id !== this.loadId) return;
+      this.metadata = metadata;
+      if (!this.source && this.editor) {
+        this.suppress = true;
+        this.outside(() => this.editor!.setValue(metadata.starterCode));
+        this.suppress = false;
+      }
+    } catch (e) {
+      if (id === this.loadId) this.error = String(e);
+    }
+  }
+  resetCode() {
+    if (this.disabled || !this.metadata) return;
+    this.source = this.metadata.starterCode;
+    this.sourceChange.emit(this.source);
+    this.suppress = true;
+    this.outside(() => this.editor?.setValue(this.source));
+    this.suppress = false;
+    this.result = undefined;
+    this.state = '';
+    this.resetPending = false;
+  }
+  private cancelRun() {
+    if (this.poll) clearTimeout(this.poll);
+    this.poll = undefined;
+    this.running = false;
+  }
+  private async api(path: string, body?: unknown) {
+    const r = await fetch('http://127.0.0.1:8080/api/sessions/' + this.sessionId + path, {
+      method: body === undefined ? 'GET' : 'POST',
+      headers: { Authorization: 'Bearer ' + this.token, 'Content-Type': 'application/json' },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    if (!r.ok) {
+      let message = 'Coding request failed (' + r.status + ')';
+      try {
+        message = (await r.json()).message || message;
+      } catch {}
+      throw Error(message);
+    }
+    return r.json();
+  }
+  async run() {
+    if (this.running || this.disabled) return;
+    this.running = true;
+    this.error = '';
+    this.result = undefined;
+    const question = this.questionId;
+    try {
+      const job = await this.api('/code-runs', {
+        questionId: this.questionId,
+        source: this.editor?.getValue() ?? this.source,
+      });
+      if (this.destroyed || question !== this.questionId) return;
+      this.state = job.state;
+      void this.check(job.id, 0, question);
+    } catch (e) {
+      this.error = String(e);
+      this.running = false;
+    }
+  }
+  private async check(id: string, attempt: number, question = this.questionId) {
+    if (this.destroyed || question !== this.questionId) return;
+    try {
+      const run = await this.api('/code-runs/' + id);
+      if (this.destroyed || question !== this.questionId) return;
+      this.state = run.state;
+      this.result = run.result;
+      if (run.state === 'DONE' || run.state === 'ERROR') {
+        this.running = false;
+        return;
+      }
+      if (attempt >= 120) {
+        this.running = false;
+        this.error =
+          'The worker is still pending. Your saved code is unaffected; contact the coordinator if the runner remains unavailable.';
+        return;
+      }
+      this.poll = setTimeout(() => void this.check(id, attempt + 1, question), 1000);
+    } catch (e) {
+      this.error = String(e);
+      this.running = false;
+    }
+  }
+  ngOnDestroy() {
+    this.destroyed = true;
+    this.cancelRun();
+    this.editor?.dispose();
+    this.model?.dispose();
+  }
 }

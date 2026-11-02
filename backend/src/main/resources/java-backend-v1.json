@@ -3,25 +3,14 @@
   "title": "Java Backend Developer - Mid-level",
   "description": "Java fundamentals, practical data processing, API resilience and database consistency. 8 MCQs, 1 Java coding problem, 2 written responses.",
   "durationMinutes": 60,
-  "skills": [
-    "Java 21",
-    "Collections",
-    "Concurrency",
-    "REST APIs",
-    "Database consistency"
-  ],
+  "skills": ["Java 21", "Collections", "Concurrency", "REST APIs", "Database consistency"],
   "reviewerInstructions": "Review each written response against both criteria. Inspect submitted source and coding outcomes before scoring code quality. Infrastructure errors are not wrong answers. Explain awarded points in the feedback. Publish only after all criteria have been scored. The recommendation is a human judgment; this application does not make hiring decisions.",
   "items": [
     {
       "id": "java-v1-m1",
       "kind": "MCQ",
       "text": "Which Java collection offers average O(1) lookup by key?",
-      "choices": [
-        "ArrayList",
-        "HashMap",
-        "LinkedList",
-        "TreeMap"
-      ],
+      "choices": ["ArrayList", "HashMap", "LinkedList", "TreeMap"],
       "correctAnswer": "HashMap",
       "explanation": "HashMap provides expected constant-time key lookup under a suitable hash distribution.",
       "maxPoints": 2,
@@ -33,12 +22,7 @@
       "id": "java-v1-m2",
       "kind": "MCQ",
       "text": "Which mechanism closes an AutoCloseable resource when its scope ends?",
-      "choices": [
-        "finalize()",
-        "try-with-resources",
-        "System.gc()",
-        "volatile"
-      ],
+      "choices": ["finalize()", "try-with-resources", "System.gc()", "volatile"],
       "correctAnswer": "try-with-resources",
       "explanation": "try-with-resources invokes close even when the body throws.",
       "maxPoints": 2,
@@ -67,12 +51,7 @@
       "id": "java-v1-m4",
       "kind": "MCQ",
       "text": "Which HTTP method is defined as idempotent?",
-      "choices": [
-        "POST in every API",
-        "PUT",
-        "CONNECT in every API",
-        "No method is idempotent"
-      ],
+      "choices": ["POST in every API", "PUT", "CONNECT in every API", "No method is idempotent"],
       "correctAnswer": "PUT",
       "explanation": "Repeating the same PUT request has the same intended resource effect.",
       "maxPoints": 2,

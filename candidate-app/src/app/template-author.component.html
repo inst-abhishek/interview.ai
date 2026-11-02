@@ -1,0 +1,762 @@
+﻿<div class="author-workspace">
+  <p *ngIf="error" class="notice" role="alert">{{ error }}</p>
+  <p *ngIf="notice" class="review-success" role="status">{{ notice }}</p>
+  <section class="panel">
+    <div class="author-heading">
+      <div>
+        <h2>Assessment authoring</h2>
+        <p class="help">
+          Create versioned assessments manually or with AI assistance. A different reviewer must
+          approve each version.
+        </p>
+      </div>
+      <div class="author-top-actions">
+        <div class="ai-status-menu" (keydown.escape)="showAiPopover = false">
+          <button
+            type="button"
+            id="ai-status-button"
+            class="secondary ai-status-trigger"
+            (click)="showAiPopover = !showAiPopover"
+            [attr.aria-expanded]="showAiPopover"
+            aria-controls="ai-connection-summary"
+          >
+            <span
+              class="connection-dot"
+              [class.ready]="connectionReady"
+              [class.warning]="!!connectionIssue"
+              aria-hidden="true"
+            ></span
+            >{{ connectionLabel
+            }}<span
+              class="connection-chevron"
+              [class.expanded]="showAiPopover"
+              aria-hidden="true"
+            ></span>
+          </button>
+          <section
+            *ngIf="showAiPopover"
+            id="ai-connection-summary"
+            class="ai-popover"
+            aria-label="AI connection summary"
+          >
+            <h3>AI connection</h3>
+            <p>
+              <strong>{{ connectionLabel }}</strong>
+            </p>
+            <dl>
+              <dt>Source</dt>
+              <dd>{{ provider === 'chatgpt' ? 'ChatGPT subscription' : 'OpenAI API key' }}</dd>
+              <ng-container *ngIf="provider === 'chatgpt' && chatgptEmail"
+                ><dt>Account</dt>
+                <dd>{{ maskedEmail }}</dd></ng-container
+              >
+              <dt>Model</dt>
+              <dd>{{ selectedModelName }}</dd>
+              <dt>Billing</dt>
+              <dd>
+                {{
+                  provider === 'chatgpt' ? 'Your ChatGPT plan allowance' : 'Separate API billing'
+                }}
+              </dd>
+            </dl>
+            <button type="button" class="secondary" (click)="openAiSettings($event)">
+              Manage connection
+            </button>
+          </section>
+        </div>
+        <button (click)="showCreate = !showCreate" [disabled]="busy || dirty">New draft</button>
+      </div>
+    </div>
+    <form *ngIf="showCreate" (ngSubmit)="create()" class="author-fields">
+      <label
+        >Version slug<input
+          name="version"
+          [(ngModel)]="version"
+          placeholder="java-senior-v1"
+          maxlength="80"
+          pattern="[a-z0-9][a-z0-9-]{2,79}"
+          required /></label
+      ><label
+        >Assessment title<input name="title" [(ngModel)]="title" maxlength="200" required /></label
+      ><label
+        >Copy an existing version (optional)<select name="parent" [(ngModel)]="parentVersion">
+          <option value="">Start empty</option>
+          <optgroup label="My drafts">
+            <option *ngFor="let d of drafts" [value]="d.VERSION">{{ d.VERSION }}</option>
+          </optgroup>
+          <optgroup label="Approved templates">
+            <option *ngFor="let s of sources" [value]="s.VERSION">
+              {{ s.TITLE }} &middot; {{ s.VERSION }}
+            </option>
+          </optgroup>
+        </select></label
+      ><button [disabled]="busy">Create draft</button>
+    </form>
+    <div class="author-drafts">
+      <button
+        *ngFor="let d of drafts"
+        class="secondary"
+        [class.active]="draft?.version === d.VERSION"
+        (click)="open(d.VERSION)"
+        [disabled]="busy || dirty"
+      >
+        {{ d.VERSION
+        }}<small>{{
+          d.PUBLISHED_STATUS === 'APPROVED'
+            ? 'Approved'
+            : d.STATE === 'SUBMITTED'
+              ? 'Awaiting approval'
+              : 'Draft'
+        }}</small>
+      </button>
+    </div>
+    <p *ngIf="!drafts.length" class="help">
+      Create your first draft to start. New versions keep existing interviews unchanged.
+    </p>
+  </section>
+  <ng-container *ngIf="draft as d"
+    ><section class="panel">
+      <div class="author-heading">
+        <div>
+          <span class="eyebrow">{{ d.version }}</span>
+          <h2>{{ d.definition.title || 'Assessment draft' }}</h2>
+          <p class="help">
+            {{
+              locked
+                ? 'Submitted content is frozen. Create a new version for changes, or ask the approver to return it.'
+                : dirty
+                  ? 'Unsaved changes'
+                  : 'Saved draft'
+            }}
+            &middot; {{ d.definition.items.length }} questions &middot; {{ total }} / 100 points
+          </p>
+        </div>
+        <div class="author-actions">
+          <button class="secondary" (click)="newVersion()" [disabled]="busy || dirty">
+            Create new version</button
+          ><button *ngIf="!locked" (click)="save()" [disabled]="busy || !dirty">Save draft</button>
+        </div>
+      </div>
+      <p *ngIf="d.feedback" class="notice"><strong>Approver feedback:</strong> {{ d.feedback }}</p>
+      <div class="author-fields">
+        <label
+          >Title<input
+            [(ngModel)]="d.definition.title"
+            (ngModelChange)="changed()"
+            [disabled]="locked || busy"
+            maxlength="200" /></label
+        ><label
+          >Duration (minutes)<input
+            type="number"
+            [(ngModel)]="d.definition.durationMinutes"
+            (ngModelChange)="changed()"
+            [disabled]="locked || busy"
+            min="5"
+            max="240" /></label
+        ><label
+          >Skills, separated by commas<input
+            [(ngModel)]="skillsText"
+            (ngModelChange)="setSkills()"
+            [disabled]="locked || busy" /></label
+        ><label
+          >Description<textarea
+            [(ngModel)]="d.definition.description"
+            (ngModelChange)="changed()"
+            [disabled]="locked || busy"
+            rows="3"
+            maxlength="4000"
+          ></textarea></label
+        ><label class="full-width"
+          >Reviewer instructions<textarea
+            [(ngModel)]="d.definition.reviewerInstructions"
+            (ngModelChange)="changed()"
+            [disabled]="locked || busy"
+            rows="3"
+            maxlength="5000"
+          ></textarea>
+        </label>
+      </div>
+      <details *ngIf="!locked" class="ai-drafting">
+        <summary>Generate assessment content with AI</summary>
+        <div class="generation-source">
+          <span
+            ><span class="connection-dot" [class.ready]="connectionReady" aria-hidden="true"></span
+            >Using {{ provider === 'chatgpt' ? 'ChatGPT' : 'OpenAI API' }} &middot;
+            {{ selectedModelName }}</span
+          ><button type="button" class="connection-change" (click)="openAiSettings($event)">
+            Change
+          </button>
+        </div>
+        <p class="help">
+          Only role, skills and requirements are sent; do not include candidate or confidential
+          information.
+          {{
+            provider === 'chatgpt'
+              ? 'Uses your connected ChatGPT plan allowance.'
+              : 'API usage is billed separately by your provider.'
+          }}
+          Generated content requires human review.
+        </p>
+        <p *ngIf="!generationAvailable" class="notice">
+          Connect the selected AI source and choose a model before generating. You can still author
+          templates manually.
+        </p>
+        <div class="author-fields">
+          <label>Target role<input [(ngModel)]="role" [disabled]="busy" maxlength="180" /></label
+          ><label
+            >Seniority<select [(ngModel)]="level" [disabled]="busy">
+              <option>Junior</option>
+              <option>Mid-level</option>
+              <option>Senior</option>
+            </select></label
+          ><label
+            >MCQs<input
+              type="number"
+              [(ngModel)]="mcqCount"
+              min="0"
+              max="20"
+              [disabled]="busy" /></label
+          ><label
+            >Written questions<input
+              type="number"
+              [(ngModel)]="writtenCount"
+              min="0"
+              max="20"
+              [disabled]="busy" /></label
+          ><label
+            >Java coding questions<input
+              type="number"
+              [(ngModel)]="codingCount"
+              min="0"
+              max="1"
+              [disabled]="busy" /></label
+          ><label
+            >Requirements<textarea
+              [(ngModel)]="requirements"
+              rows="3"
+              maxlength="6000"
+              [disabled]="busy"
+            ></textarea>
+          </label>
+        </div>
+        <p class="help">
+          Save metadata changes first. Generation replaces this draft's questions and scoring
+          content; approved versions are unaffected.
+        </p>
+        <label class="author-check"
+          ><input type="checkbox" [(ngModel)]="aiReplaceAcknowledged" [disabled]="busy" /> I want AI
+          to replace this saved draft's content.</label
+        ><button
+          (click)="generate()"
+          [disabled]="
+            busy || connectionBusy || dirty || !generationAvailable || !aiReplaceAcknowledged
+          "
+        >
+          {{ operation === 'generate' ? 'Generating draft...' : 'Generate AI draft' }}
+        </button>
+        <div
+          *ngIf="operation === 'generate'"
+          class="operation-status"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <span class="operation-spinner" aria-hidden="true"></span>
+          <div>
+            <strong>Generating your assessment draft</strong>
+            <p>
+              Creating questions, answer keys, rubrics and Java tests where requested. Elapsed:
+              {{ elapsed }}.
+            </p>
+            <small>{{
+              operationSeconds >= 60
+                ? 'Still working. Larger assessments can take a few minutes.'
+                : 'Your saved draft stays unchanged until a complete response is received.'
+            }}</small>
+          </div>
+        </div>
+        <p
+          *ngIf="operationErrorFor === 'generate' && operationError"
+          class="notice operation-error"
+          role="alert"
+        >
+          {{ operationError }}
+        </p>
+      </details>
+      <p *ngIf="d.aiGeneratedAt" class="help">
+        AI-assisted draft &middot; {{ d.aiModel }} &middot; {{ d.aiGeneratedAt | date: 'medium' }}
+      </p>
+    </section>
+    <section class="panel">
+      <div class="author-heading">
+        <h2>Questions and scoring</h2>
+        <div class="author-actions" *ngIf="!locked">
+          <button
+            class="secondary"
+            (click)="add('MCQ')"
+            [disabled]="busy || d.definition.items.length >= 50"
+          >
+            Add MCQ</button
+          ><button
+            class="secondary"
+            (click)="add('TECHNICAL')"
+            [disabled]="busy || d.definition.items.length >= 50"
+          >
+            Add written question</button
+          ><button
+            class="secondary"
+            (click)="add('CODING')"
+            [disabled]="busy || codingPresent || d.definition.items.length >= 50"
+          >
+            Add Java coding
+          </button>
+        </div>
+      </div>
+      <div class="author-question-layout">
+        <nav aria-label="Assessment questions">
+          <button
+            *ngFor="let q of d.definition.items; let i = index"
+            class="secondary"
+            [class.active]="questionIndex === i"
+            (click)="questionIndex = i; preview = false"
+          >
+            Question {{ i + 1 }}<small>{{ label(q.kind) }} &middot; {{ q.maxPoints }} points</small>
+          </button>
+        </nav>
+        <div *ngIf="current as q" class="author-question">
+          <div class="author-heading">
+            <h3>{{ label(q.kind) }} &middot; Question {{ questionIndex + 1 }}</h3>
+            <button class="secondary" (click)="preview = !preview">
+              {{ preview ? 'Edit content' : 'Candidate preview' }}
+            </button>
+          </div>
+          <ng-container *ngIf="preview; else questionEditor"
+            ><p class="preview-question">{{ q.text }}</p>
+            <label *ngFor="let c of q.choices" class="preview-choice"
+              ><input type="radio" disabled /> {{ c }}</label
+            ><textarea
+              *ngIf="q.kind === 'TECHNICAL'"
+              rows="5"
+              placeholder="Candidate response"
+              disabled
+            ></textarea>
+            <pre *ngIf="q.kind === 'CODING'">{{ q.starterCode }}</pre>
+            <h4 *ngIf="q.publicTests.length">Public examples</h4>
+            <pre *ngFor="let t of q.publicTests">
+Input: {{ t.input }}
+Expected output: {{ t.expected }}</pre>
+            <p class="help">
+              Answer keys, reference solutions, rubrics and hidden tests are excluded from the
+              candidate view.
+            </p></ng-container
+          ><ng-template #questionEditor
+            ><div class="author-fields">
+              <label
+                >Question ID<input
+                  [(ngModel)]="q.id"
+                  (ngModelChange)="changed()"
+                  [disabled]="locked || busy"
+                  maxlength="80" /></label
+              ><label
+                >Total question points<input
+                  type="number"
+                  [(ngModel)]="q.maxPoints"
+                  (ngModelChange)="changed()"
+                  [disabled]="locked || busy"
+                  min="1"
+                  max="100" /></label
+              ><label class="full-width"
+                >Question / problem statement<textarea
+                  [(ngModel)]="q.text"
+                  (ngModelChange)="changed()"
+                  [disabled]="locked || busy"
+                  rows="5"
+                  maxlength="10000"
+                ></textarea>
+              </label>
+            </div>
+            <div *ngIf="q.kind === 'MCQ'" class="author-fields">
+              <label
+                >Choices, one per line<textarea
+                  [ngModel]="q.choices.join('\n')"
+                  (ngModelChange)="choices(q, $event)"
+                  [disabled]="locked || busy"
+                  rows="5"
+                ></textarea></label
+              ><label
+                >Correct answer<select
+                  [(ngModel)]="q.correctAnswer"
+                  (ngModelChange)="changed()"
+                  [disabled]="locked || busy"
+                >
+                  <option *ngFor="let c of q.choices" [ngValue]="c">{{ c }}</option>
+                </select></label
+              ><label class="full-width"
+                >Answer explanation<textarea
+                  [(ngModel)]="q.explanation"
+                  (ngModelChange)="changed()"
+                  [disabled]="locked || busy"
+                  rows="3"
+                  maxlength="4000"
+                ></textarea>
+              </label>
+            </div>
+            <ng-container *ngIf="q.kind !== 'MCQ'"
+              ><h4>Scoring rubric</h4>
+              <article class="rubric-editor" *ngFor="let r of q.rubric; let i = index">
+                <div class="author-fields">
+                  <label
+                    >Criterion ID<input
+                      [(ngModel)]="r.id"
+                      (ngModelChange)="changed()"
+                      [disabled]="locked || busy" /></label
+                  ><label
+                    >Criterion label<input
+                      [(ngModel)]="r.label"
+                      (ngModelChange)="changed()"
+                      [disabled]="locked || busy" /></label
+                  ><label
+                    >Maximum points<input
+                      type="number"
+                      [(ngModel)]="r.maxPoints"
+                      (ngModelChange)="changed()"
+                      [disabled]="locked || busy"
+                      min="1"
+                      max="100" /></label
+                  ><label
+                    >Scoring guidance<textarea
+                      [(ngModel)]="r.guidance"
+                      (ngModelChange)="changed()"
+                      [disabled]="locked || busy"
+                      rows="4"
+                      placeholder="Explain what earns low, partial and full points."
+                    ></textarea>
+                  </label>
+                </div>
+                <button
+                  *ngIf="!locked"
+                  class="secondary"
+                  (click)="q.rubric.splice(i, 1); changed()"
+                  [disabled]="busy"
+                >
+                  Remove criterion
+                </button>
+              </article>
+              <button
+                *ngIf="!locked"
+                class="secondary"
+                (click)="criterion(q)"
+                [disabled]="busy || q.rubric.length >= 10"
+              >
+                Add criterion
+              </button></ng-container
+            >
+            <ng-container *ngIf="q.kind === 'CODING'"
+              ><h4>Java 21 &middot; Main.java</h4>
+              <p class="help">
+                Use standard input/output. Question points minus rubric points are awarded through
+                public and hidden tests.
+              </p>
+              <label
+                >Starter code<textarea
+                  class="code-input"
+                  [(ngModel)]="q.starterCode"
+                  (ngModelChange)="changed()"
+                  [disabled]="locked || busy"
+                  rows="9"
+                ></textarea></label
+              ><label
+                >Reference solution<textarea
+                  class="code-input"
+                  [(ngModel)]="q.referenceSolution"
+                  (ngModelChange)="changed()"
+                  [disabled]="locked || busy"
+                  rows="12"
+                ></textarea></label
+              ><ng-container *ngFor="let hidden of [false, true]"
+                ><h4>{{ hidden ? 'Hidden tests' : 'Public examples' }}</h4>
+                <article
+                  class="rubric-editor"
+                  *ngFor="let t of hidden ? q.hiddenTests : q.publicTests; let i = index"
+                >
+                  <label
+                    >Test ID<input
+                      [(ngModel)]="t.id"
+                      (ngModelChange)="changed()"
+                      [disabled]="locked || busy"
+                  /></label>
+                  <div class="author-fields">
+                    <label
+                      >Input<textarea
+                        [(ngModel)]="t.input"
+                        (ngModelChange)="changed()"
+                        [disabled]="locked || busy"
+                        rows="3"
+                      ></textarea></label
+                    ><label
+                      >Expected output<textarea
+                        [(ngModel)]="t.expected"
+                        (ngModelChange)="changed()"
+                        [disabled]="locked || busy"
+                        rows="3"
+                      ></textarea>
+                    </label>
+                  </div>
+                  <button
+                    *ngIf="!locked"
+                    class="secondary"
+                    (click)="(hidden ? q.hiddenTests : q.publicTests).splice(i, 1); changed()"
+                    [disabled]="busy"
+                  >
+                    Remove test
+                  </button>
+                </article>
+                <button
+                  *ngIf="!locked"
+                  class="secondary"
+                  (click)="test(q, hidden)"
+                  [disabled]="busy || (hidden ? q.hiddenTests : q.publicTests).length >= 10"
+                >
+                  Add {{ hidden ? 'hidden test' : 'public example' }}
+                </button></ng-container
+              ></ng-container
+            ><button
+              *ngIf="!locked"
+              class="remove-question secondary"
+              (click)="removeQuestion()"
+              [disabled]="busy"
+            >
+              Remove question
+            </button></ng-template
+          >
+        </div>
+        <p *ngIf="!d.definition.items.length" class="help">
+          Add a question or generate a draft with AI.
+        </p>
+      </div>
+    </section>
+    <section *ngIf="!locked" class="panel">
+      <h2>Validate and submit</h2>
+      <p *ngIf="codingPresent" class="runner-status">
+        <strong>Java runner:</strong> {{ runnerLabel }}. This is separate from your AI connection.
+      </p>
+      <div
+        *ngIf="operation === 'validate'"
+        class="operation-status"
+        role="status"
+        aria-live="polite"
+      >
+        <span class="operation-spinner" aria-hidden="true"></span>
+        <div>
+          <strong>Validating the saved assessment</strong>
+          <p>
+            Checking scoring rules and running Java reference code against public and hidden tests
+            where required. Elapsed: {{ elapsed }}.
+          </p>
+        </div>
+      </div>
+      <p
+        *ngIf="operationErrorFor === 'validate' && operationError && !validationReport"
+        class="notice"
+        role="alert"
+      >
+        {{ operationError }}
+      </p>
+      <section
+        *ngIf="validationReport as report"
+        class="validation-report"
+        role="region"
+        aria-label="Reference code validation results"
+      >
+        <h3>Reference code needs attention</h3>
+        <p>
+          Question {{ report.questionId }}: {{ report.passed }} / {{ report.total }} tests passed.
+          Execution finishing does not mean all tests passed. Review both the reference solution and
+          each expected output, then save and validate again.
+        </p>
+        <p *ngIf="!report.tests.length">
+          No individual test results are available. Check the Java runner and its error message
+          above.
+        </p>
+        <details *ngFor="let t of report.tests" [open]="t.state !== 'PASSED'">
+          <summary>{{ t.id }} &middot; {{ testState(t.state) }}</summary>
+          <div class="validation-test-values">
+            <div>
+              <strong>Input</strong>
+              <pre>{{ t.input || '(empty input)' }}</pre>
+            </div>
+            <div>
+              <strong>Expected output</strong>
+              <pre>{{ t.expected || '(empty output)' }}</pre>
+            </div>
+            <div>
+              <strong>Actual output / compiler message</strong>
+              <pre>{{ t.output || '(no output)' }}</pre>
+            </div>
+          </div>
+        </details>
+      </section>
+      <p class="help">
+        Save changes, validate the complete assessment, then submit to a different reviewer.
+        Validation checks point totals, keys, rubrics and reference code; it does not replace
+        technical approval.
+      </p>
+      <details *ngIf="d.errors.length" open>
+        <summary>{{ d.errors.length }} validation issues in the saved draft</summary>
+        <ul>
+          <li *ngFor="let e of d.errors">{{ e }}</li>
+        </ul>
+      </details>
+      <p *ngIf="d.validated" class="review-success">The saved revision is validated.</p>
+      <div class="author-actions">
+        <button class="secondary" (click)="validate()" [disabled]="busy || dirty">
+          Validate saved draft</button
+        ><label
+          >Assigned approver<select [(ngModel)]="approverId" [disabled]="busy">
+            <option value="">Choose a different reviewer</option>
+            <option *ngFor="let a of approvers" [ngValue]="a.ID">
+              {{ a.NAME }} ({{ a.EMAIL }})
+            </option>
+          </select></label
+        ><button (click)="submit()" [disabled]="busy || dirty || !d.validated || !approverId">
+          Submit for approval
+        </button>
+      </div>
+    </section></ng-container
+  >
+</div>
+
+<div *ngIf="showAiSettings" class="ai-settings-overlay">
+  <button
+    type="button"
+    class="ai-settings-backdrop"
+    aria-label="Close AI settings"
+    (click)="closeAiSettings()"
+  ></button>
+  <aside
+    class="ai-settings-drawer"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="ai-settings-title"
+    (keydown)="settingsKeydown($event)"
+  >
+    <header>
+      <div>
+        <span class="eyebrow">Preferences</span>
+        <h2 id="ai-settings-title">AI settings</h2>
+      </div>
+      <button
+        type="button"
+        id="ai-settings-close"
+        class="secondary"
+        (click)="closeAiSettings()"
+        aria-label="Close AI settings"
+      >
+        <span class="connection-close-icon" aria-hidden="true"></span>
+      </button>
+    </header>
+    <div class="ai-settings-content">
+      <section class="ai-settings-card">
+        <h3>{{ provider === 'chatgpt' ? 'ChatGPT subscription' : 'OpenAI API key' }}</h3>
+        <p class="connection-state">
+          <span
+            class="connection-dot"
+            [class.ready]="connectionReady"
+            [class.warning]="!!connectionIssue"
+            aria-hidden="true"
+          ></span
+          >{{ connectionLabel }}
+        </p>
+        <ng-container *ngIf="provider === 'chatgpt'"
+          ><dl>
+            <dt>Connected account</dt>
+            <dd>{{ chatgptEmail || 'No account connected' }}</dd>
+            <dt>Usage and billing</dt>
+            <dd>Your ChatGPT plan allowance. No automatic switch to paid API billing.</dd>
+          </dl>
+          <label *ngIf="chatgptConnected"
+            >Model<select [(ngModel)]="chatgptModel" [disabled]="busy || connectionBusy">
+              <option *ngFor="let m of chatgptModels" [value]="m.slug">{{ m.displayName }}</option>
+            </select></label
+          >
+          <p class="help">
+            Each author connects their own account. Remaining allowance is managed in ChatGPT; this
+            app does not display a live balance.
+          </p>
+          <div class="ai-settings-actions">
+            <button type="button" (click)="connectChatGpt()" [disabled]="busy || connectionBusy">
+              {{ chatgptConnected ? 'Reconnect ChatGPT' : 'Connect ChatGPT' }}</button
+            ><a
+              *ngIf="chatgptUrl"
+              class="chatgpt-continue"
+              [href]="chatgptUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-oai-siwc-button
+              >Continue with ChatGPT <span aria-hidden="true">&#8599;</span></a
+            ><button
+              type="button"
+              class="secondary"
+              (click)="refreshConnection()"
+              [disabled]="busy || connectionBusy"
+            >
+              {{ connectionBusy ? 'Checking connection...' : 'Refresh connection status' }}</button
+            ><button
+              type="button"
+              *ngIf="chatgptConnected"
+              class="secondary disconnect-action"
+              (click)="disconnectChatGpt()"
+              [disabled]="busy || connectionBusy"
+            >
+              Disconnect ChatGPT
+            </button>
+          </div>
+          <p *ngIf="chatgptMessage" class="settings-message" role="status">
+            {{ chatgptMessage }}
+          </p></ng-container
+        ><ng-container *ngIf="provider === 'api'"
+          ><dl>
+            <dt>Backend key</dt>
+            <dd>{{ aiAvailable ? 'Configured' : 'Not configured' }}</dd>
+            <dt>Model</dt>
+            <dd>{{ model || 'Not configured' }}</dd>
+            <dt>Billing</dt>
+            <dd>API charges are separate from your ChatGPT subscription.</dd>
+          </dl>
+          <p class="help">
+            Configure API credentials on the backend. Keys are never displayed here.
+          </p></ng-container
+        >
+      </section>
+      <details class="ai-other-options">
+        <summary>Other connection options</summary>
+        <p class="help">
+          Choose one AI source for generation. Switching sources does not disconnect your saved
+          ChatGPT account.
+        </p>
+        <button
+          type="button"
+          class="secondary"
+          *ngIf="provider === 'chatgpt'"
+          (click)="provider = 'api'; connectionIssue = ''"
+          [disabled]="busy || connectionBusy"
+        >
+          Switch to API key (separate billing)</button
+        ><button
+          type="button"
+          class="secondary"
+          *ngIf="provider === 'api'"
+          (click)="provider = 'chatgpt'; connectionIssue = ''"
+          [disabled]="busy || connectionBusy"
+        >
+          Use ChatGPT subscription
+        </button>
+      </details>
+      <p class="help ai-settings-footnote">
+        This subscription connection is for local use. Hosted deployments require a separately
+        approved integration. AI-generated assessments still need technical review and independent
+        approval.
+      </p>
+    </div>
+  </aside>
+</div>

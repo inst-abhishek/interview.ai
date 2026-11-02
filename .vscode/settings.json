@@ -1,0 +1,23 @@
+{
+  "editor.formatOnSave": true,
+  "editor.detectIndentation": false,
+  "editor.insertSpaces": true,
+  "editor.tabSize": 2,
+  "files.eol": "\n",
+  "prettier.requireConfig": true,
+  "prettier.documentSelectors": ["**/*.java", "**/*.xml"],
+  "[typescript][javascript][javascriptreact][typescriptreact][html][css][scss][json][jsonc][markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[java]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 4
+  },
+  "[xml]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 4
+  },
+  "[sql]": {
+    "editor.tabSize": 4
+  }
+}

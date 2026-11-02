@@ -1,0 +1,14 @@
+{
+  "name": "interview-platform-tooling",
+  "private": true,
+  "scripts": {
+    "format": "prettier --write . --ignore-unknown && node tools/format-sql.cjs --write",
+    "format:check": "prettier --check . --ignore-unknown && node tools/format-sql.cjs --check"
+  },
+  "devDependencies": {
+    "@prettier/plugin-xml": "3.4.2",
+    "prettier": "3.9.10",
+    "prettier-plugin-java": "2.11.0",
+    "sql-formatter": "15.9.0"
+  }
+}

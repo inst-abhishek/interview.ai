@@ -17,12 +17,7 @@
       "id": "cloud-ops-v1-m1",
       "kind": "MCQ",
       "text": "Which Kubernetes probe determines whether a container is ready to receive service traffic?",
-      "choices": [
-        "Readiness probe",
-        "Liveness probe only",
-        "Image pull policy",
-        "CPU limit"
-      ],
+      "choices": ["Readiness probe", "Liveness probe only", "Image pull policy", "CPU limit"],
       "correctAnswer": "Readiness probe",
       "explanation": "A readiness probe controls readiness for traffic; it does not by itself restart the container.",
       "maxPoints": 5,

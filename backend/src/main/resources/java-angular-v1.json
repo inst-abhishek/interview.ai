@@ -3,26 +3,14 @@
   "title": "Java Full Stack Developer with Angular - Mid-level",
   "description": "Java and Angular fundamentals, Java data processing, full-stack failure handling and form design. 8 MCQs, 1 Java coding problem, 2 written responses.",
   "durationMinutes": 60,
-  "skills": [
-    "Java 21",
-    "Spring Boot",
-    "Angular",
-    "RxJS",
-    "Reactive forms",
-    "REST APIs"
-  ],
+  "skills": ["Java 21", "Spring Boot", "Angular", "RxJS", "Reactive forms", "REST APIs"],
   "reviewerInstructions": "Score each written response against its rubric. Award points for specific, technically sound reasoning and trade-offs. Notes are optional. Publish only after every criterion is scored. The recommendation is a human judgment; this application does not make hiring decisions. Inspect submitted Java code and final tests before awarding code-quality points.",
   "items": [
     {
       "id": "java-angular-v1-m1",
       "kind": "MCQ",
       "text": "Which Java collection offers average O(1) lookup by key?",
-      "choices": [
-        "ArrayList",
-        "HashMap",
-        "LinkedList",
-        "TreeMap"
-      ],
+      "choices": ["ArrayList", "HashMap", "LinkedList", "TreeMap"],
       "correctAnswer": "HashMap",
       "explanation": "HashMap provides expected constant-time key lookup under a suitable hash distribution.",
       "maxPoints": 2,
@@ -34,12 +22,7 @@
       "id": "java-angular-v1-m2",
       "kind": "MCQ",
       "text": "Which mechanism closes an AutoCloseable resource when its scope ends?",
-      "choices": [
-        "finalize()",
-        "try-with-resources",
-        "System.gc()",
-        "volatile"
-      ],
+      "choices": ["finalize()", "try-with-resources", "System.gc()", "volatile"],
       "correctAnswer": "try-with-resources",
       "explanation": "try-with-resources invokes close even when the body throws.",
       "maxPoints": 2,
@@ -68,12 +51,7 @@
       "id": "java-angular-v1-m4",
       "kind": "MCQ",
       "text": "Which HTTP method is defined as idempotent?",
-      "choices": [
-        "POST in every API",
-        "PUT",
-        "CONNECT in every API",
-        "No method is idempotent"
-      ],
+      "choices": ["POST in every API", "PUT", "CONNECT in every API", "No method is idempotent"],
       "correctAnswer": "PUT",
       "explanation": "Repeating the same PUT request has the same intended resource effect.",
       "maxPoints": 2,
@@ -119,12 +97,7 @@
       "id": "java-angular-v1-m7",
       "kind": "MCQ",
       "text": "A search field starts a new HTTP request for each value. Which RxJS operator switches to the latest inner request and unsubscribes from the previous one?",
-      "choices": [
-        "mergeMap",
-        "concatMap",
-        "switchMap",
-        "filter"
-      ],
+      "choices": ["mergeMap", "concatMap", "switchMap", "filter"],
       "correctAnswer": "switchMap",
       "explanation": "switchMap unsubscribes from the previous inner observable when a new value arrives.",
       "maxPoints": 2,

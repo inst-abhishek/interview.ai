@@ -41,18 +41,12 @@
   "compounds": [
     {
       "name": "Full application (frontend + backend)",
-      "configurations": [
-        "Backend: Spring Boot",
-        "Frontend: Angular"
-      ],
+      "configurations": ["Backend: Spring Boot", "Frontend: Angular"],
       "stopAll": true
     },
     {
       "name": "Preview: Java assessment template",
-      "configurations": [
-        "Backend: Java template preview",
-        "Frontend: Angular"
-      ],
+      "configurations": ["Backend: Java template preview", "Frontend: Angular"],
       "stopAll": true
     }
   ]

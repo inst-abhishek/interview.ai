@@ -1,0 +1,24 @@
+{
+  "plugins": ["prettier-plugin-java", "@prettier/plugin-xml"],
+  "printWidth": 100,
+  "tabWidth": 2,
+  "useTabs": false,
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "es5",
+  "endOfLine": "lf",
+  "overrides": [
+    {
+      "files": "*.java",
+      "options": { "tabWidth": 4, "trailingComma": "none" }
+    },
+    {
+      "files": "candidate-app/**/*.html",
+      "options": { "parser": "angular" }
+    },
+    {
+      "files": "*.xml",
+      "options": { "tabWidth": 4, "xmlWhitespaceSensitivity": "ignore" }
+    }
+  ]
+}

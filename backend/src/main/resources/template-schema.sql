@@ -1,18 +1,86 @@
-CREATE TABLE IF NOT EXISTS assessment_templates (version VARCHAR(80) PRIMARY KEY, status VARCHAR(30) NOT NULL, definition CLOB NOT NULL, approved_by VARCHAR(64), approved_at BIGINT);
-ALTER TABLE interviews ADD COLUMN IF NOT EXISTS template_version VARCHAR(80);
-CREATE TABLE IF NOT EXISTS coding_runs (id VARCHAR(80) PRIMARY KEY, session_id VARCHAR(80) NOT NULL REFERENCES sessions(id), question_id VARCHAR(80) NOT NULL, visibility VARCHAR(20) NOT NULL, state VARCHAR(30) NOT NULL, source CLOB NOT NULL, result CLOB, created_at BIGINT NOT NULL);
-CREATE INDEX IF NOT EXISTS coding_queue_idx ON coding_runs(state,created_at);
-CREATE TABLE IF NOT EXISTS template_evaluations (session_id VARCHAR(80) PRIMARY KEY REFERENCES sessions(id), state VARCHAR(30) NOT NULL, criteria CLOB NOT NULL, notes CLOB NOT NULL, recommendation VARCHAR(20), reviewer VARCHAR(64), published_at BIGINT);
-ALTER TABLE coding_runs ADD COLUMN IF NOT EXISTS final_key VARCHAR(200) UNIQUE;
-ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS title VARCHAR(300);
-ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS role_name VARCHAR(200);
-ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS skills VARCHAR(4000);
-ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS duration_minutes INT;
-ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS question_count INT;
-ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS updated_at BIGINT;
-CREATE INDEX IF NOT EXISTS template_queue_idx ON assessment_templates(status,updated_at,version);
-ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS description VARCHAR(4000);
+CREATE TABLE IF NOT EXISTS assessment_templates (
+    version VARCHAR(80) PRIMARY KEY,
+    status VARCHAR(30) NOT NULL,
+    definition CLOB NOT NULL,
+    approved_by VARCHAR(64),
+    approved_at BIGINT
+);
 
-ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS coding_required BOOLEAN;
-CREATE TABLE IF NOT EXISTS template_review_assignments (version VARCHAR(80) PRIMARY KEY REFERENCES assessment_templates(version), reviewer_id VARCHAR(80) NOT NULL REFERENCES recruiters(id));
-CREATE INDEX IF NOT EXISTS template_reviewer_idx ON template_review_assignments(reviewer_id,version);
+ALTER TABLE interviews
+ADD COLUMN IF NOT EXISTS template_version VARCHAR(80);
+
+CREATE TABLE IF NOT EXISTS coding_runs (
+    id VARCHAR(80) PRIMARY KEY,
+    session_id VARCHAR(80) NOT NULL REFERENCES sessions (id),
+    question_id VARCHAR(80) NOT NULL,
+    visibility VARCHAR(20) NOT NULL,
+    state VARCHAR(30) NOT NULL,
+    source CLOB NOT NULL,
+    RESULT CLOB,
+    created_at BIGINT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS coding_queue_idx ON coding_runs (state, created_at);
+
+CREATE TABLE IF NOT EXISTS template_evaluations (
+    session_id VARCHAR(80) PRIMARY KEY REFERENCES sessions (id),
+    state VARCHAR(30) NOT NULL,
+    criteria CLOB NOT NULL,
+    notes CLOB NOT NULL,
+    recommendation VARCHAR(20),
+    reviewer VARCHAR(64),
+    published_at BIGINT
+);
+
+ALTER TABLE coding_runs
+ADD COLUMN IF NOT EXISTS final_key VARCHAR(200) UNIQUE;
+
+ALTER TABLE assessment_templates
+ADD COLUMN IF NOT EXISTS title VARCHAR(300);
+
+ALTER TABLE assessment_templates
+ADD COLUMN IF NOT EXISTS role_name VARCHAR(200);
+
+ALTER TABLE assessment_templates
+ADD COLUMN IF NOT EXISTS skills VARCHAR(4000);
+
+ALTER TABLE assessment_templates
+ADD COLUMN IF NOT EXISTS duration_minutes INT;
+
+ALTER TABLE assessment_templates
+ADD COLUMN IF NOT EXISTS question_count INT;
+
+ALTER TABLE assessment_templates
+ADD COLUMN IF NOT EXISTS updated_at BIGINT;
+
+CREATE INDEX IF NOT EXISTS template_queue_idx ON assessment_templates (status, updated_at, version);
+
+ALTER TABLE assessment_templates
+ADD COLUMN IF NOT EXISTS description VARCHAR(4000);
+
+ALTER TABLE assessment_templates
+ADD COLUMN IF NOT EXISTS coding_required BOOLEAN;
+
+CREATE TABLE IF NOT EXISTS template_review_assignments (
+    version VARCHAR(80) PRIMARY KEY REFERENCES assessment_templates (version),
+    reviewer_id VARCHAR(80) NOT NULL REFERENCES recruiters (id)
+);
+
+CREATE INDEX IF NOT EXISTS template_reviewer_idx ON template_review_assignments (reviewer_id, version);
+
+ALTER TABLE assessment_templates
+ADD COLUMN IF NOT EXISTS author_id VARCHAR(80);
+
+CREATE TABLE IF NOT EXISTS template_drafts (
+    version VARCHAR(80) PRIMARY KEY,
+    author_id VARCHAR(80) NOT NULL REFERENCES recruiters (id),
+    definition CLOB NOT NULL,
+    revision INT NOT NULL DEFAULT 0,
+    state VARCHAR(30) NOT NULL DEFAULT 'DRAFT',
+    parent_version VARCHAR(80),
+    validated_hash VARCHAR(64),
+    ai_model VARCHAR(100),
+    ai_generated_at BIGINT,
+    feedback VARCHAR(2000),
+    updated_at BIGINT NOT NULL
+);

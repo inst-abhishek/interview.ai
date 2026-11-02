@@ -6,8 +6,15 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class EvidenceRetentionCleanup {
-  private final JdbcTemplate db;
-  public EvidenceRetentionCleanup(JdbcTemplate db){this.db=db;}
-  @Scheduled(fixedDelay=3600000,initialDelay=3600000)
-  public void deleteExpiredEvidence(){db.update("DELETE FROM integrity_evidence WHERE expires_at<=?",System.currentTimeMillis());}
+
+    private final JdbcTemplate db;
+
+    public EvidenceRetentionCleanup(JdbcTemplate db) {
+        this.db = db;
+    }
+
+    @Scheduled(fixedDelay = 3600000, initialDelay = 3600000)
+    public void deleteExpiredEvidence() {
+        db.update("DELETE FROM integrity_evidence WHERE expires_at<=?", System.currentTimeMillis());
+    }
 }

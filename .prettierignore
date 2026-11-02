@@ -1,0 +1,13 @@
+**/node_modules/**
+**/dist/**
+**/.angular/**
+**/target/**
+.git/**
+backend/data/**
+assets/**
+**/*.log
+**/.env
+**/.env.*
+**/*.sql
+**/package-lock.json
+docs/*.mp4

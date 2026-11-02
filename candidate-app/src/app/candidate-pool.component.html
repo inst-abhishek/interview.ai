@@ -1,12 +1,417 @@
-﻿<div class="pool-workspace"><p class="notice" *ngIf="error" role="alert">{{error}}</p><p class="review-success" *ngIf="notice" role="status">{{notice}}</p>
-<section class="panel"><div class="pool-heading"><div><h2>Candidate pool</h2><p class="help">Manage your candidates, import a CSV, and select up to 200 people for an invitation batch.</p></div><button (click)="edit()" [disabled]="busy">Add candidate</button></div>
-<form *ngIf="showForm" class="pool-form" (ngSubmit)="save()"><h3>{{editingId?'Edit candidate':'Add a candidate'}}</h3><div class="pool-grid"><label>Full name<input name="poolName" [(ngModel)]="name" required maxlength="120"></label><label>Email<input name="poolEmail" type="email" [(ngModel)]="email" required maxlength="254"></label><label>Skills (optional)<input name="poolSkills" [(ngModel)]="skills" maxlength="500" placeholder="Java, Angular, AWS"></label><label>Experience in years (optional)<input name="poolYears" type="number" [(ngModel)]="experience" min="0" max="60" step="0.5"></label></div><div class="pool-actions"><button type="button" class="secondary" (click)="showForm=false" [disabled]="busy">Cancel</button><button [disabled]="busy">Save candidate</button></div></form>
-<details class="pool-import"><summary>Import candidates from CSV</summary><p class="help">Use Name,Email headers. Optional columns: Skills,Experience. Maximum 1,000 rows and 1 MB. The preview flags invalid and duplicate rows; only valid new rows will be imported.</p><div class="pool-actions"><button type="button" class="secondary" (click)="downloadTemplate()">Download CSV template</button><label class="file-picker">Choose CSV<input type="file" accept=".csv,text/csv" (change)="readCsv($event)" [disabled]="busy"></label></div><div *ngIf="importPreview as p"><h3>{{csvName}}</h3><p>{{p.ready}} ready &middot; {{p.invalid}} invalid &middot; {{p.duplicates}} existing or duplicate</p><div class="pool-scroll"><table><thead><tr><th>Row</th><th>Candidate</th><th>Result</th></tr></thead><tbody><tr *ngFor="let r of p.rows"><td>{{r.row}}</td><td><strong>{{r.name||'Name missing'}}</strong><small>{{r.email}}</small></td><td>{{r.message}}</td></tr></tbody></table></div><div class="pool-actions"><button type="button" class="secondary" (click)="importPreview=undefined;csv=''" [disabled]="busy">Cancel import</button><button (click)="importCsv()" [disabled]="busy||!p.ready">Import {{p.ready}} valid candidates</button></div></div></details>
-<form class="pool-filters" (ngSubmit)="applyFilters()"><label>Search name or email<input name="poolSearch" [(ngModel)]="search" maxlength="200" type="search"></label><label>Skill<input name="poolSkill" [(ngModel)]="skill" maxlength="100"></label><label>Minimum years<input name="poolMin" type="number" [(ngModel)]="minExperience" min="0" max="60" step="0.5"></label><button [disabled]="busy">Apply filters</button></form>
-<div class="pool-heading"><p>{{selected.size}} selected across pages</p><div class="pool-actions"><button class="secondary" type="button" (click)="selectPage()" [disabled]="busy||!candidates.length">Toggle this page</button><button class="secondary" type="button" (click)="clearSelection()" [disabled]="busy||!selected.size">Clear selection</button></div></div>
-<div class="pool-table"><table><thead><tr><th>Select</th><th>Candidate</th><th>Skills</th><th>Experience</th><th>Action</th></tr></thead><tbody><tr *ngFor="let c of candidates"><td><input class="pool-check" type="checkbox" [checked]="selected.has(c.id)" (change)="toggle(c)" [disabled]="busy" [attr.aria-label]="'Select '+c.name"></td><td><strong>{{c.name}}</strong><small>{{c.email}}</small></td><td>{{c.skills||'Not provided'}}</td><td>{{c.experience===null?'Not provided':c.experience+' years'}}</td><td><button class="secondary" (click)="edit(c)" [disabled]="busy">Edit</button></td></tr></tbody></table><p *ngIf="!candidates.length&&!busy" class="help">No candidates match. Add a candidate, import a CSV, or adjust the filters.</p></div>
-<div class="pool-pagination"><span>Showing {{first}}&ndash;{{last}} of {{total}}</span><label>Per page<select [(ngModel)]="size" (ngModelChange)="applyFilters()" [disabled]="busy"><option [ngValue]="10">10</option><option [ngValue]="25">25</option><option [ngValue]="50">50</option></select></label><button class="secondary" (click)="changePage(page-1)" [disabled]="busy||page===0">Previous</button><span>Page {{page+1}} of {{pages}}</span><button class="secondary" (click)="changePage(page+1)" [disabled]="busy||page>=pages-1">Next</button></div></section>
-<section class="panel"><h2>Invite selected candidates</h2><p class="help">Choose a scheduled interview. The preview identifies candidates already invited to that interview. They will be skipped without changing their existing links or answers.</p><p *ngIf="!emailAvailable" class="help">Email is not configured. Generate invitations and copy individual links or download a CSV for manual sharing.</p><form (ngSubmit)="reviewInvitations()" class="pool-form"><div class="pool-grid"><label>Scheduled interview<select name="bulkInterview" [(ngModel)]="interviewId" (ngModelChange)="setExpiry()" required><option value="">Choose an interview</option><option *ngFor="let j of interviews" [value]="j.id">{{j.title}} &middot; {{j.scheduledAt|date:'medium'}}</option></select></label><label>Invitation expiry (your local time)<input name="bulkExpiry" type="datetime-local" [(ngModel)]="expiresAt" (ngModelChange)="invalidatePreview()" required></label></div><label class="pool-checkbox"><input type="checkbox" name="sendEmail" [(ngModel)]="sendEmail" (ngModelChange)="invalidatePreview()" [disabled]="!emailAvailable||busy"> Also send individual invitation emails</label><button [disabled]="busy||!interviewId||!selected.size">Preview {{selected.size}} invitations</button></form>
-<div *ngIf="preview as p" class="bulk-preview"><h3>Confirm invitations</h3><p><strong>{{p.interviewTitle}}</strong> &middot; {{p.durationSeconds/60}} minutes</p><p>Starts {{p.scheduledAt|date:'medium'}} &middot; Links expire {{p.expiresAt|date:'medium'}}</p><p><strong>{{p.ready}} new invitations</strong> &middot; {{p.alreadyInvited}} already invited and will be skipped</p><p class="help">{{sendEmail?'Emails will be queued individually after confirmation.':'No email will be sent. Share the generated links manually.'}}</p><p class="help" *ngIf="p.publicAppUrl.includes('127.0.0.1')||p.publicAppUrl.includes('localhost')">The configured links work on this computer only. For remote candidates, configure a deployed application URL before sharing.</p><div class="pool-scroll"><table><thead><tr><th>Candidate</th><th>Invitation</th></tr></thead><tbody><tr *ngFor="let r of p.recipients"><td><strong>{{r.name}}</strong><small>{{r.email}}</small></td><td>{{r.status==='READY'?'Will be invited':'Already invited; skipped'}}</td></tr></tbody></table></div><div class="pool-actions"><button class="secondary" (click)="invalidatePreview()" [disabled]="busy">Back to selection</button><button (click)="generate()" [disabled]="busy||!p.ready">{{busy?'Generating...':sendEmail?'Generate and queue emails':'Generate invitations'}}</button></div></div></section>
-<section class="panel"><div class="pool-heading"><div><h2>Saved invitation batches</h2><p class="help">Your latest 20 batches. Reopen a batch to copy links, download its CSV or check delivery and assessment progress.</p></div><button class="secondary" (click)="refreshBatches()" [disabled]="busy">Refresh batches</button></div><div class="batch-list"><button class="secondary" *ngFor="let b of batches" (click)="openBatch(b.ID)" [disabled]="busy">{{b.TITLE}} &middot; {{b.CREATED_AT|date:'short'}}</button></div><p *ngIf="!batches.length" class="help">No bulk invitation batches yet.</p>
-<div *ngIf="batch as b" class="batch-result"><div class="pool-heading"><h3>{{b.interviewTitle}}</h3><div class="pool-actions"><button class="secondary" (click)="refreshBatch()" [disabled]="busy">Refresh status</button><button (click)="exportBatch()" [disabled]="busy">Download invitation CSV</button></div></div><p>{{b.created}} generated &middot; {{b.skipped}} skipped</p><p class="help">Links are private credentials. Email status shows mail-server acceptance, not confirmed inbox delivery. Assessment progress is tracked separately.</p><label *ngIf="emailAvailable" class="pool-checkbox"><input class="pool-check" type="checkbox" [(ngModel)]="unknownAcknowledged"> For any uncertain email outcome, I checked whether it arrived before retrying.</label><div class="pool-scroll"><table><thead><tr><th>Candidate</th><th>Batch outcome</th><th>Email</th><th>Assessment</th><th>Actions</th></tr></thead><tbody><tr *ngFor="let r of b.items"><td><strong>{{r.name}}</strong><small>{{r.email}}</small><small>Expires {{r.expiresAt|date:'short'}}</small></td><td>{{r.outcome==='CREATED'?'Generated':'Already invited; skipped'}}</td><td>{{deliveryLabel(r.deliveryStatus)}}<small *ngIf="r.lastError">{{r.lastError}}</small></td><td>{{stateLabel(r.assessmentState)}}</td><td><div class="row-actions"><button class="secondary" (click)="copy(r)" [disabled]="busy||!r.url">Copy link</button><button *ngIf="r.deliveryStatus!=='SENT'" class="secondary" (click)="send(r)" [disabled]="busy||!canSend(r)||r.deliveryStatus==='UNKNOWN'&&!unknownAcknowledged">{{r.deliveryStatus==='NOT_SENT'?'Send email':'Retry email'}}</button><button *ngIf="r.deliveryStatus==='SENT'" class="secondary" (click)="send(r,true)" [disabled]="busy||!canSend(r)">Send reminder</button></div><details *ngIf="r.url"><summary>Show link</summary><input readonly [value]="r.url" (focus)="$any($event.target).select()" [attr.aria-label]="'Invitation link for '+r.name"></details><small *ngIf="!r.url">Link expired or unavailable. Regenerate it from the interview candidate list.</small></td></tr></tbody></table></div></div></section></div>
+﻿<div class="pool-workspace">
+  <p class="notice" *ngIf="error" role="alert">{{ error }}</p>
+  <p class="review-success" *ngIf="notice" role="status">{{ notice }}</p>
+  <section class="panel">
+    <div class="pool-heading">
+      <div>
+        <h2>Candidate pool</h2>
+        <p class="help">
+          Manage your candidates, import a CSV, and select up to 200 people for an invitation batch.
+        </p>
+      </div>
+      <button (click)="edit()" [disabled]="busy">Add candidate</button>
+    </div>
+    <form *ngIf="showForm" class="pool-form" (ngSubmit)="save()">
+      <h3>{{ editingId ? 'Edit candidate' : 'Add a candidate' }}</h3>
+      <div class="pool-grid">
+        <label>Full name<input name="poolName" [(ngModel)]="name" required maxlength="120" /></label
+        ><label
+          >Email<input
+            name="poolEmail"
+            type="email"
+            [(ngModel)]="email"
+            required
+            maxlength="254" /></label
+        ><label
+          >Skills (optional)<input
+            name="poolSkills"
+            [(ngModel)]="skills"
+            maxlength="500"
+            placeholder="Java, Angular, AWS" /></label
+        ><label
+          >Experience in years (optional)<input
+            name="poolYears"
+            type="number"
+            [(ngModel)]="experience"
+            min="0"
+            max="60"
+            step="0.5"
+        /></label>
+      </div>
+      <div class="pool-actions">
+        <button type="button" class="secondary" (click)="showForm = false" [disabled]="busy">
+          Cancel</button
+        ><button [disabled]="busy">Save candidate</button>
+      </div>
+    </form>
+    <details class="pool-import">
+      <summary>Import candidates from CSV</summary>
+      <p class="help">
+        Use Name,Email headers. Optional columns: Skills,Experience. Maximum 1,000 rows and 1 MB.
+        The preview flags invalid and duplicate rows; only valid new rows will be imported.
+      </p>
+      <div class="pool-actions">
+        <button type="button" class="secondary" (click)="downloadTemplate()">
+          Download CSV template</button
+        ><label class="file-picker"
+          >Choose CSV<input
+            type="file"
+            accept=".csv,text/csv"
+            (change)="readCsv($event)"
+            [disabled]="busy"
+        /></label>
+      </div>
+      <div *ngIf="importPreview as p">
+        <h3>{{ csvName }}</h3>
+        <p>
+          {{ p.ready }} ready &middot; {{ p.invalid }} invalid &middot; {{ p.duplicates }} existing
+          or duplicate
+        </p>
+        <div class="pool-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Row</th>
+                <th>Candidate</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let r of p.rows">
+                <td>{{ r.row }}</td>
+                <td>
+                  <strong>{{ r.name || 'Name missing' }}</strong
+                  ><small>{{ r.email }}</small>
+                </td>
+                <td>{{ r.message }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pool-actions">
+          <button
+            type="button"
+            class="secondary"
+            (click)="importPreview = undefined; csv = ''"
+            [disabled]="busy"
+          >
+            Cancel import</button
+          ><button (click)="importCsv()" [disabled]="busy || !p.ready">
+            Import {{ p.ready }} valid candidates
+          </button>
+        </div>
+      </div>
+    </details>
+    <form class="pool-filters" (ngSubmit)="applyFilters()">
+      <label
+        >Search name or email<input
+          name="poolSearch"
+          [(ngModel)]="search"
+          maxlength="200"
+          type="search" /></label
+      ><label>Skill<input name="poolSkill" [(ngModel)]="skill" maxlength="100" /></label
+      ><label
+        >Minimum years<input
+          name="poolMin"
+          type="number"
+          [(ngModel)]="minExperience"
+          min="0"
+          max="60"
+          step="0.5" /></label
+      ><button [disabled]="busy">Apply filters</button>
+    </form>
+    <div class="pool-heading">
+      <p>{{ selected.size }} selected across pages</p>
+      <div class="pool-actions">
+        <button
+          class="secondary"
+          type="button"
+          (click)="selectPage()"
+          [disabled]="busy || !candidates.length"
+        >
+          Toggle this page</button
+        ><button
+          class="secondary"
+          type="button"
+          (click)="clearSelection()"
+          [disabled]="busy || !selected.size"
+        >
+          Clear selection
+        </button>
+      </div>
+    </div>
+    <div class="pool-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Select</th>
+            <th>Candidate</th>
+            <th>Skills</th>
+            <th>Experience</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let c of candidates">
+            <td>
+              <input
+                class="pool-check"
+                type="checkbox"
+                [checked]="selected.has(c.id)"
+                (change)="toggle(c)"
+                [disabled]="busy"
+                [attr.aria-label]="'Select ' + c.name"
+              />
+            </td>
+            <td>
+              <strong>{{ c.name }}</strong
+              ><small>{{ c.email }}</small>
+            </td>
+            <td>{{ c.skills || 'Not provided' }}</td>
+            <td>{{ c.experience === null ? 'Not provided' : c.experience + ' years' }}</td>
+            <td><button class="secondary" (click)="edit(c)" [disabled]="busy">Edit</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <p *ngIf="!candidates.length && !busy" class="help">
+        No candidates match. Add a candidate, import a CSV, or adjust the filters.
+      </p>
+    </div>
+    <div class="pool-pagination">
+      <span>Showing {{ first }}&ndash;{{ last }} of {{ total }}</span
+      ><label
+        >Per page<select [(ngModel)]="size" (ngModelChange)="applyFilters()" [disabled]="busy">
+          <option [ngValue]="10">10</option>
+          <option [ngValue]="25">25</option>
+          <option [ngValue]="50">50</option>
+        </select></label
+      ><button class="secondary" (click)="changePage(page - 1)" [disabled]="busy || page === 0">
+        Previous</button
+      ><span>Page {{ page + 1 }} of {{ pages }}</span
+      ><button
+        class="secondary"
+        (click)="changePage(page + 1)"
+        [disabled]="busy || page >= pages - 1"
+      >
+        Next
+      </button>
+    </div>
+  </section>
+  <section class="panel">
+    <h2>Invite selected candidates</h2>
+    <p class="help">
+      Choose a scheduled interview. The preview identifies candidates already invited to that
+      interview. They will be skipped without changing their existing links or answers.
+    </p>
+    <p *ngIf="!emailAvailable" class="help">
+      Email is not configured. Generate invitations and copy individual links or download a CSV for
+      manual sharing.
+    </p>
+    <form (ngSubmit)="reviewInvitations()" class="pool-form">
+      <div class="pool-grid">
+        <label
+          >Scheduled interview<select
+            name="bulkInterview"
+            [(ngModel)]="interviewId"
+            (ngModelChange)="setExpiry()"
+            required
+          >
+            <option value="">Choose an interview</option>
+            <option *ngFor="let j of interviews" [value]="j.id">
+              {{ j.title }} &middot; {{ j.scheduledAt | date: 'medium' }}
+            </option>
+          </select></label
+        ><label
+          >Invitation expiry (your local time)<input
+            name="bulkExpiry"
+            type="datetime-local"
+            [(ngModel)]="expiresAt"
+            (ngModelChange)="invalidatePreview()"
+            required
+        /></label>
+      </div>
+      <label class="pool-checkbox"
+        ><input
+          type="checkbox"
+          name="sendEmail"
+          [(ngModel)]="sendEmail"
+          (ngModelChange)="invalidatePreview()"
+          [disabled]="!emailAvailable || busy"
+        />
+        Also send individual invitation emails</label
+      ><button [disabled]="busy || !interviewId || !selected.size">
+        Preview {{ selected.size }} invitations
+      </button>
+    </form>
+    <div *ngIf="preview as p" class="bulk-preview">
+      <h3>Confirm invitations</h3>
+      <p>
+        <strong>{{ p.interviewTitle }}</strong> &middot; {{ p.durationSeconds / 60 }} minutes
+      </p>
+      <p>
+        Starts {{ p.scheduledAt | date: 'medium' }} &middot; Links expire
+        {{ p.expiresAt | date: 'medium' }}
+      </p>
+      <p>
+        <strong>{{ p.ready }} new invitations</strong> &middot; {{ p.alreadyInvited }} already
+        invited and will be skipped
+      </p>
+      <p class="help">
+        {{
+          sendEmail
+            ? 'Emails will be queued individually after confirmation.'
+            : 'No email will be sent. Share the generated links manually.'
+        }}
+      </p>
+      <p
+        class="help"
+        *ngIf="p.publicAppUrl.includes('127.0.0.1') || p.publicAppUrl.includes('localhost')"
+      >
+        The configured links work on this computer only. For remote candidates, configure a deployed
+        application URL before sharing.
+      </p>
+      <div class="pool-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Candidate</th>
+              <th>Invitation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of p.recipients">
+              <td>
+                <strong>{{ r.name }}</strong
+                ><small>{{ r.email }}</small>
+              </td>
+              <td>{{ r.status === 'READY' ? 'Will be invited' : 'Already invited; skipped' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pool-actions">
+        <button class="secondary" (click)="invalidatePreview()" [disabled]="busy">
+          Back to selection</button
+        ><button (click)="generate()" [disabled]="busy || !p.ready">
+          {{
+            busy
+              ? 'Generating...'
+              : sendEmail
+                ? 'Generate and queue emails'
+                : 'Generate invitations'
+          }}
+        </button>
+      </div>
+    </div>
+  </section>
+  <section class="panel">
+    <div class="pool-heading">
+      <div>
+        <h2>Saved invitation batches</h2>
+        <p class="help">
+          Your latest 20 batches. Reopen a batch to copy links, download its CSV or check delivery
+          and assessment progress.
+        </p>
+      </div>
+      <button class="secondary" (click)="refreshBatches()" [disabled]="busy">
+        Refresh batches
+      </button>
+    </div>
+    <div class="batch-list">
+      <button
+        class="secondary"
+        *ngFor="let b of batches"
+        (click)="openBatch(b.ID)"
+        [disabled]="busy"
+      >
+        {{ b.TITLE }} &middot; {{ b.CREATED_AT | date: 'short' }}
+      </button>
+    </div>
+    <p *ngIf="!batches.length" class="help">No bulk invitation batches yet.</p>
+    <div *ngIf="batch as b" class="batch-result">
+      <div class="pool-heading">
+        <h3>{{ b.interviewTitle }}</h3>
+        <div class="pool-actions">
+          <button class="secondary" (click)="refreshBatch()" [disabled]="busy">
+            Refresh status</button
+          ><button (click)="exportBatch()" [disabled]="busy">Download invitation CSV</button>
+        </div>
+      </div>
+      <p>{{ b.created }} generated &middot; {{ b.skipped }} skipped</p>
+      <p class="help">
+        Links are private credentials. Email status shows mail-server acceptance, not confirmed
+        inbox delivery. Assessment progress is tracked separately.
+      </p>
+      <label *ngIf="emailAvailable" class="pool-checkbox"
+        ><input class="pool-check" type="checkbox" [(ngModel)]="unknownAcknowledged" /> For any
+        uncertain email outcome, I checked whether it arrived before retrying.</label
+      >
+      <div class="pool-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Candidate</th>
+              <th>Batch outcome</th>
+              <th>Email</th>
+              <th>Assessment</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of b.items">
+              <td>
+                <strong>{{ r.name }}</strong
+                ><small>{{ r.email }}</small
+                ><small>Expires {{ r.expiresAt | date: 'short' }}</small>
+              </td>
+              <td>{{ r.outcome === 'CREATED' ? 'Generated' : 'Already invited; skipped' }}</td>
+              <td>
+                {{ deliveryLabel(r.deliveryStatus)
+                }}<small *ngIf="r.lastError">{{ r.lastError }}</small>
+              </td>
+              <td>{{ stateLabel(r.assessmentState) }}</td>
+              <td>
+                <div class="row-actions">
+                  <button class="secondary" (click)="copy(r)" [disabled]="busy || !r.url">
+                    Copy link</button
+                  ><button
+                    *ngIf="r.deliveryStatus !== 'SENT'"
+                    class="secondary"
+                    (click)="send(r)"
+                    [disabled]="
+                      busy ||
+                      !canSend(r) ||
+                      (r.deliveryStatus === 'UNKNOWN' && !unknownAcknowledged)
+                    "
+                  >
+                    {{ r.deliveryStatus === 'NOT_SENT' ? 'Send email' : 'Retry email' }}</button
+                  ><button
+                    *ngIf="r.deliveryStatus === 'SENT'"
+                    class="secondary"
+                    (click)="send(r, true)"
+                    [disabled]="busy || !canSend(r)"
+                  >
+                    Send reminder
+                  </button>
+                </div>
+                <details *ngIf="r.url">
+                  <summary>Show link</summary>
+                  <input
+                    readonly
+                    [value]="r.url"
+                    (focus)="$any($event.target).select()"
+                    [attr.aria-label]="'Invitation link for ' + r.name"
+                  />
+                </details>
+                <small *ngIf="!r.url"
+                  >Link expired or unavailable. Regenerate it from the interview candidate
+                  list.</small
+                >
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>
