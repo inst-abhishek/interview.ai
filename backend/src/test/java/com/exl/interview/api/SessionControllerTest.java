@@ -23,6 +23,7 @@ class SessionControllerTest {
  @Autowired MockMvc mvc; @Autowired ObjectMapper json; @Autowired JdbcTemplate db; @Autowired EvidenceRetentionCleanup retentionCleanup;
  String login() throws Exception {return json.readTree(mvc.perform(MockMvcRequestBuilders.post("/api/auth/login").contentType("application/json").content("{\"code\":\"test-secret\"}")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).get("token").asText();}
  String reviewerLogin() throws Exception {return json.readTree(mvc.perform(MockMvcRequestBuilders.post("/api/auth/reviewer-login").contentType("application/json").content("{\"code\":\"review-secret\"}")).andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).get("token").asText();}
+<<<<<<< HEAD
  @Test void corsAllowsLocalhostFrontendForHealthAndLogin() throws Exception {
    mvc.perform(MockMvcRequestBuilders.get("/api/health").header("Origin","http://localhost:4200"))
      .andExpect(status().isOk()).andExpect(header().string("Access-Control-Allow-Origin","http://localhost:4200"));
@@ -31,6 +32,8 @@ class SessionControllerTest {
    mvc.perform(MockMvcRequestBuilders.get("/api/health").header("Origin","http://localhost:4300"))
      .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
  }
+=======
+>>>>>>> 6eef7fb1fd265ac6980ab5f9f8336a8ffd582b41
  JsonNode post(String path,String token,String body,int status) throws Exception {return json.readTree(mvc.perform(MockMvcRequestBuilders.post("/api"+path).header("Authorization","Bearer "+token).contentType("application/json").content(body)).andExpect(status().is(status)).andReturn().getResponse().getContentAsString().isBlank()?"{}":last(path,token));}
  String last(String path,String token) throws Exception {String id=path.split("/")[2];return mvc.perform(MockMvcRequestBuilders.get("/api/sessions/"+id).header("Authorization","Bearer "+token)).andReturn().getResponse().getContentAsString();}
  String create(String token) throws Exception {String body="{\"consent\":true,\"evidenceConsent\":true,\"checks\":[{\"key\":\"camera\",\"status\":\"passed\"},{\"key\":\"microphone\",\"status\":\"passed\"},{\"key\":\"screen\",\"status\":\"passed\"},{\"key\":\"service\",\"status\":\"passed\"}]}";return json.readTree(mvc.perform(MockMvcRequestBuilders.post("/api/sessions").header("Authorization","Bearer "+token).contentType("application/json").content(body)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).get("id").asText();}

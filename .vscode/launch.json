@@ -9,7 +9,13 @@
       "env": {
         "INTERVIEW_INVITATION_CODE": "exldemo",
         "INTERVIEW_REVIEWER_CODE": "reviewdemo",
+<<<<<<< HEAD
         "INTERVIEW_RECRUITER_SETUP_CODE": "exl-recruiter-setup"
+=======
+        "INTERVIEW_RECRUITER_SETUP_CODE": "exl-recruiter-setup",
+        "INTERVIEW_ADMIN_SETUP_CODE": "exl-admin-setup",
+        "INTERVIEW_CODING_ENABLED": "true"
+>>>>>>> 6eef7fb1fd265ac6980ab5f9f8336a8ffd582b41
       },
       "command": "mvn.cmd spring-boot:run"
     },
@@ -19,6 +25,24 @@
       "request": "launch",
       "command": "npm.cmd start",
       "cwd": "${workspaceFolder}/candidate-app"
+<<<<<<< HEAD
+=======
+    },
+    {
+      "type": "node-terminal",
+      "name": "Backend: Java template preview",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "INTERVIEW_INVITATION_CODE": "exldemo",
+        "INTERVIEW_REVIEWER_CODE": "reviewdemo",
+        "INTERVIEW_RECRUITER_SETUP_CODE": "exl-recruiter-setup",
+        "INTERVIEW_ADMIN_SETUP_CODE": "exl-admin-setup",
+        "SPRING_PROFILES_ACTIVE": "java-template",
+        "INTERVIEW_CODING_ENABLED": "true"
+      },
+      "command": "mvn.cmd spring-boot:run"
+>>>>>>> 6eef7fb1fd265ac6980ab5f9f8336a8ffd582b41
     }
   ],
   "compounds": [
@@ -29,6 +53,17 @@
         "Frontend: Angular"
       ],
       "stopAll": true
+<<<<<<< HEAD
+=======
+    },
+    {
+      "name": "Preview: Java assessment template",
+      "configurations": [
+        "Backend: Java template preview",
+        "Frontend: Angular"
+      ],
+      "stopAll": true
+>>>>>>> 6eef7fb1fd265ac6980ab5f9f8336a8ffd582b41
     }
   ]
 }

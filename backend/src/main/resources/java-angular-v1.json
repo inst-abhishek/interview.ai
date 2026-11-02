@@ -1,0 +1,250 @@
+{
+  "version": "java-angular-mid-v1",
+  "title": "Java Full Stack Developer with Angular - Mid-level",
+  "description": "Java and Angular fundamentals, Java data processing, full-stack failure handling and form design. 8 MCQs, 1 Java coding problem, 2 written responses.",
+  "durationMinutes": 60,
+  "skills": [
+    "Java 21",
+    "Spring Boot",
+    "Angular",
+    "RxJS",
+    "Reactive forms",
+    "REST APIs"
+  ],
+  "reviewerInstructions": "Score each written response against its rubric. Award points for specific, technically sound reasoning and trade-offs. Notes are optional. Publish only after every criterion is scored. The recommendation is a human judgment; this application does not make hiring decisions. Inspect submitted Java code and final tests before awarding code-quality points.",
+  "items": [
+    {
+      "id": "java-angular-v1-m1",
+      "kind": "MCQ",
+      "text": "Which Java collection offers average O(1) lookup by key?",
+      "choices": [
+        "ArrayList",
+        "HashMap",
+        "LinkedList",
+        "TreeMap"
+      ],
+      "correctAnswer": "HashMap",
+      "explanation": "HashMap provides expected constant-time key lookup under a suitable hash distribution.",
+      "maxPoints": 2,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "java-angular-v1-m2",
+      "kind": "MCQ",
+      "text": "Which mechanism closes an AutoCloseable resource when its scope ends?",
+      "choices": [
+        "finalize()",
+        "try-with-resources",
+        "System.gc()",
+        "volatile"
+      ],
+      "correctAnswer": "try-with-resources",
+      "explanation": "try-with-resources invokes close even when the body throws.",
+      "maxPoints": 2,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "java-angular-v1-m3",
+      "kind": "MCQ",
+      "text": "Which statement about volatile is correct?",
+      "choices": [
+        "It makes every compound operation atomic",
+        "It provides visibility of writes across threads",
+        "It prevents all race conditions",
+        "It replaces synchronization in every case"
+      ],
+      "correctAnswer": "It provides visibility of writes across threads",
+      "explanation": "Visibility does not make a read-modify-write sequence such as increment atomic.",
+      "maxPoints": 2,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "java-angular-v1-m4",
+      "kind": "MCQ",
+      "text": "Which HTTP method is defined as idempotent?",
+      "choices": [
+        "POST in every API",
+        "PUT",
+        "CONNECT in every API",
+        "No method is idempotent"
+      ],
+      "correctAnswer": "PUT",
+      "explanation": "Repeating the same PUT request has the same intended resource effect.",
+      "maxPoints": 2,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "java-angular-v1-m5",
+      "kind": "MCQ",
+      "text": "What does unsubscribing from an in-progress Angular HttpClient request do?",
+      "choices": [
+        "Always sends the request again",
+        "Aborts the in-progress request",
+        "Caches every response permanently",
+        "Changes the server response status"
+      ],
+      "correctAnswer": "Aborts the in-progress request",
+      "explanation": "Unsubscribing cancels an in-progress client request; it does not guarantee rollback of server-side work.",
+      "maxPoints": 2,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "java-angular-v1-m6",
+      "kind": "MCQ",
+      "text": "Which Angular forms approach defines the form model explicitly in component code?",
+      "choices": [
+        "Reactive forms",
+        "Only plain HTML forms",
+        "Template-driven forms only",
+        "CSS forms"
+      ],
+      "correctAnswer": "Reactive forms",
+      "explanation": "Reactive forms use explicit FormControl and FormGroup models in component code.",
+      "maxPoints": 2,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "java-angular-v1-m7",
+      "kind": "MCQ",
+      "text": "A search field starts a new HTTP request for each value. Which RxJS operator switches to the latest inner request and unsubscribes from the previous one?",
+      "choices": [
+        "mergeMap",
+        "concatMap",
+        "switchMap",
+        "filter"
+      ],
+      "correctAnswer": "switchMap",
+      "explanation": "switchMap unsubscribes from the previous inner observable when a new value arrives.",
+      "maxPoints": 2,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "java-angular-v1-m8",
+      "kind": "MCQ",
+      "text": "Where must authorization for an order-update API be enforced?",
+      "choices": [
+        "Only in an Angular route guard",
+        "Only by hiding the button",
+        "In the backend for every protected request",
+        "Only in browser local storage"
+      ],
+      "correctAnswer": "In the backend for every protected request",
+      "explanation": "Client-side controls improve navigation, but the server must enforce authorization for protected resources.",
+      "maxPoints": 2,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "java-angular-v1-c1",
+      "kind": "CODING",
+      "text": "Duplicate customer IDs\nRead 0 to 10,000 signed 32-bit integers from standard input, separated by whitespace. Print each ID that occurs more than once, once only, in ascending numeric order, separated by a single space. Print NONE if there are no duplicates.\nUse Java 21 and a public class Main with a public static void main(String[] args). Do not use packages, files, network access or external libraries.\nExample: input 4 2 4 3 2 gives output 2 4.",
+      "choices": [],
+      "maxPoints": 40,
+      "rubric": [
+        {
+          "id": "approach",
+          "label": "Approach and code quality",
+          "maxPoints": 10,
+          "guidance": "Assess correct data structures, handling of edge cases, sensible complexity, readable naming and concise explanation through code."
+        }
+      ],
+      "starterCode": "import java.util.*;\n\npublic class Main {\n    public static void main(String[] args) {\n        // Read IDs from System.in and print the required result.\n    }\n}\n",
+      "publicTests": [
+        {
+          "id": "sample-1",
+          "input": "4 2 4 3 2\n",
+          "expected": "2 4"
+        },
+        {
+          "id": "sample-2",
+          "input": "1 2 3\n",
+          "expected": "NONE"
+        }
+      ],
+      "hiddenTests": [
+        {
+          "id": "hidden-1",
+          "input": "",
+          "expected": "NONE"
+        },
+        {
+          "id": "hidden-2",
+          "input": "5 5 5 5\n",
+          "expected": "5"
+        },
+        {
+          "id": "hidden-3",
+          "input": "-1 -3 -1 0 0 -3 8\n",
+          "expected": "-3 -1 0"
+        },
+        {
+          "id": "hidden-4",
+          "input": "2147483647 -2147483648 2147483647 -2147483648\n",
+          "expected": "-2147483648 2147483647"
+        }
+      ],
+      "referenceSolution": "import java.util.*;\npublic class Main {\n public static void main(String[] args) {\n  Scanner in=new Scanner(System.in); TreeMap<Integer,Integer> counts=new TreeMap<>();\n  while(in.hasNextInt()){int n=in.nextInt();counts.merge(n,1,Integer::sum);}\n  StringJoiner out=new StringJoiner(\" \");\n  for(var e:counts.entrySet())if(e.getValue()>1)out.add(e.getKey().toString());\n  System.out.println(out.length()==0?\"NONE\":out.toString());\n }\n}\n"
+    },
+    {
+      "id": "java-angular-v1-t1",
+      "kind": "TECHNICAL",
+      "text": "Design an Angular order-entry screen backed by a Spring Boot API. Explain client and server validation, duplicate submissions, authorization, failure feedback and testing.",
+      "choices": [],
+      "maxPoints": 22,
+      "publicTests": [],
+      "hiddenTests": [],
+      "rubric": [
+        {
+          "id": "criterion-1",
+          "label": "End-to-end correctness",
+          "maxPoints": 11,
+          "guidance": "0: no coherent flow. 1-5: basic form and endpoint. 6-8: client/server validation, server authorization and idempotency. 9-11: covers concurrent retries, transaction boundaries and integration tests."
+        },
+        {
+          "id": "criterion-2",
+          "label": "Resilience and user experience",
+          "maxPoints": 11,
+          "guidance": "0: no failure handling. 1-5: generic error display. 6-8: loading states, actionable errors, bounded retries and preserved form state. 9-11: covers accessibility, partial failures and observability."
+        }
+      ]
+    },
+    {
+      "id": "java-angular-v1-t2",
+      "kind": "TECHNICAL",
+      "text": "An Angular typeahead shows stale results and a large list renders slowly. Explain how you would diagnose and improve correctness, rendering and accessibility.",
+      "choices": [],
+      "maxPoints": 22,
+      "publicTests": [],
+      "hiddenTests": [],
+      "rubric": [
+        {
+          "id": "criterion-1",
+          "label": "Request lifecycle and correctness",
+          "maxPoints": 11,
+          "guidance": "0: ignores request ordering. 1-5: suggests debounce only. 6-8: explains debounce, distinct values, switchMap cancellation and cleanup. 9-11: considers server-side effects, errors and tests for out-of-order responses."
+        },
+        {
+          "id": "criterion-2",
+          "label": "Rendering and verification",
+          "maxPoints": 11,
+          "guidance": "0: no plan. 1-5: vague optimization. 6-8: stable item identities, measured change detection, pagination or virtualization and keyboard access. 9-11: evidence-led profiling, focus preservation and performance tests."
+        }
+      ]
+    }
+  ]
+}

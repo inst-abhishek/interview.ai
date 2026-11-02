@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Interview platform: Recruiter setup and interview management
 
 The candidate app supports permission checks, consent, timed MCQ/technical assessments, recoverable submission, and completion after server confirmation. The Spring Boot API persists sessions, consent timestamps, readiness snapshots, question snapshots, deadlines, answers and submission timestamps in a local H2 database. Named recruiter accounts can manage their own interviews, question banks, invitations and candidate submissions. The existing shared reviewer role can still review submitted assessments and integrity evidence.
@@ -5,11 +6,60 @@ The candidate app supports permission checks, consent, timed MCQ/technical asses
 ## Run locally (PowerShell)
 
 Backend terminal (Java 21 and Maven 3.9+):
+=======
+# Interview Platform
+
+A local interview-assessment application with recruiter, candidate and reviewer workspaces. Built with Angular 18, Spring Boot, Java 21 and H2.
+
+## What is implemented
+
+- **Administration:** individual staff accounts, Admin/Recruiter/Reviewer roles, activation/deactivation, interview reviewer assignments, one-time password resets and recent activity history.
+- **Candidate management:** recruiter-owned candidate pool, server-side search/filtering/pagination, CSV preview/import, bulk invitation preview, saved batches and private link exports. Optional SMTP delivery, explicit retries and reminders are available but disabled by default.
+- **Recruiter:** named accounts, private question bank, approved assessment selection, scheduled interviews, expiring candidate invitations and status tracking. Candidate evaluations open as compact summaries with published scores, recommendations, feedback and the actual evaluator's name, email and review date. Candidate rows show a compact evaluator name. Older shared-code reviews are labelled when a name was not recorded.
+- **Candidate:** device checks, monitoring acknowledgement, grouped MCQ/Coding/Written response navigation, answer autosave, review markers and a shared assessment timer. Java questions use a Monaco editor with examples and public test runs.
+- **Reviewer:** server-side search, filtering and pagination; one-question-at-a-time answers and scoring; monitoring evidence; optional notes; draft saving and final publication.
+- **Assessment lifecycle:** immutable question snapshots, server-enforced deadlines and automatic submission of saved answers at expiry.
+
+Recent changes include the main-database assessment catalogue, role-specific templates, Java coding execution, reviewer rubric scoring, clearer score labels, consistent Back navigation and a focused recruiter evaluation summary.
+
+## Quick start
+
+### Requirements
+
+- Java 21 and Maven 3.9+ on PATH.
+- Node.js 20.11+ or Node.js 22, with npm.
+- Docker Desktop using Linux containers **only for Java coding execution**. On Windows, complete WSL 2 setup and restart if requested. Candidates do not install Docker or WSL.
+
+### VS Code
+
+1. Open the repository root and install frontend dependencies:
+
+   ```powershell
+   cd candidate-app
+   npm.cmd ci
+   ```
+
+2. If using Java coding, start Docker Desktop and build the runner from the repository root:
+
+   ```powershell
+   .\docs\Setup-Java-Coding.ps1 -BuildImage
+   ```
+
+3. Stop existing servers on ports 8080 and 4200. In **Run and Debug**, select **Full application (frontend + backend)** and press **F5**.
+4. Open [the application](http://127.0.0.1:4200).
+
+The launch configuration starts both servers in terminals; a Java debug extension is not required. It enables Java coding execution, so Docker and the runner image must be ready for coding tests.
+
+### Separate terminals
+
+Backend:
+>>>>>>> 6eef7fb1fd265ac6980ab5f9f8336a8ffd582b41
 
 ```powershell
 cd backend
 $env:INTERVIEW_INVITATION_CODE = 'exldemo'
 $env:INTERVIEW_REVIEWER_CODE = 'reviewdemo'
+<<<<<<< HEAD
 $env:INTERVIEW_RECRUITER_SETUP_CODE = 'exl-recruiter-setup'
 mvn spring-boot:run
 ```
@@ -33,12 +83,141 @@ Candidate and reviewer sign-in each issue a random bearer token valid for 24 hou
 After starting the app, select **Reviewer sign in** and use the separately configured reviewer code. The reviewer workspace lists submitted assessments, displays question/answer pairs and readiness-check snapshots, and lets the reviewer save/update a 1–5 score, evidence-based notes, and a shortlist/hold/reject recommendation. Assessment duration and submission time are shown when available. Before starting, candidates must acknowledge the monitoring notice. The start action requests browser fullscreen; exiting fullscreen while an assessment is active records a `FULLSCREEN_EXIT` event, displays a warning, and offers a user-clicked way to re-enter fullscreen. This is a deterrent only: a normal browser cannot disable tab switching, other apps, or operating-system controls. During the assessment, focus-loss events are debounced for one second and snapshots are taken from fresh frames on the permitted entire-screen and webcam (when available) tracks using the browser's `ImageCapture` API. For focus-loss events, the screen frame is captured and uploaded before optional webcam evidence so webcam processing cannot delay the screen snapshot. Tab-hidden captures are attempted while away and skipped if the candidate returns before capture. Solid black/white frames are retried briefly and skipped rather than uploaded. The local demo marks an unavailable webcam as passed with a visible demo override; in that case, only actual shared-screen frames can be captured. These technical signals can have benign causes and are not proof of misconduct. Snapshots are reviewer-visible and automatically deleted after 30 days by default (`INTERVIEW_EVIDENCE_RETENTION_DAYS` changes the retention period). The database also caps uploads at 50 snapshots per session and 500 KB per image. Microphone and screen access require browser permission; continuous recording, transcripts, AI scoring, gaze/face detection and automated hiring decisions are not implemented. Review access is global to reviewers in this local POC, so do not use it for real candidate data.
 
 The database question bank includes two read-only sample questions. Recruiters can add, edit, search and filter their own MCQ and technical questions. Other recruiters cannot see these private questions. Interviews snapshot their selected questions at creation; later bank edits cannot change assigned assessments.
+=======
+$env:INTERVIEW_RECRUITER_SETUP_CODE = 'exl-recruiter-setup' # Legacy setup before first administrator.
+$env:INTERVIEW_ADMIN_SETUP_CODE = 'choose-a-private-admin-setup-code'
+$env:INTERVIEW_CODING_ENABLED = 'true' # Use 'false' if Docker is unavailable.
+mvn.cmd spring-boot:run
+```
+
+Frontend, in another terminal:
+
+```powershell
+cd candidate-app
+npm.cmd ci # First run, or after dependency changes.
+npm.cmd start
+```
+
+The frontend uses `http://127.0.0.1:4200` and the API uses `http://127.0.0.1:8080`. Restart the backend after changing Java code or environment variables.
+
+## Sign-in and testing flow
+
+The public header has two entry points: **Staff sign in** and **Candidate sign in**. Staff sign-in routes accounts to Administration, Recruiter or Reviewer workspaces based on their server-assigned role. Refresh restores the current staff workspace; sign-out returns to sign-in. Invitation links take candidates into their own flow.
+
+The values below are local demo credentials configured by the launch file or commands above.
+
+| Access | How to sign in |
+|---|---|
+| Administrator | Open **Staff sign in > First administrator setup**. Use `exl-admin-setup` with the VS Code launch configuration, or your configured `INTERVIEW_ADMIN_SETUP_CODE`. Choose your own email and password. Setup works once per database. |
+| Recruiter | Administrator creates the account. Sign in through **Staff sign in** with email and password. Existing recruiter accounts continue to work. |
+| Reviewer | Administrator creates the account. Select **Staff sign in** and use email and password. |
+| Candidate | Use the unique invitation link/code generated by the recruiter. `exldemo` remains available for the legacy shared-code demo. |
+
+After the first administrator is created, shared reviewer-code access and recruiter self-registration are disabled, including existing shared reviewer tokens. Before setup, the legacy demo API remains compatible. Use private setup values outside a local demo.
+
+In **Administration > Staff accounts**, create accounts and manage access. Role changes or deactivation revoke sign-ins and remove reviewer assignments when applicable. Administrators cannot deactivate or change their own role.
+
+In **Candidate review assignments**, assign one active reviewer to a scheduled interview. Assignment rows show the recruiter, scheduled date and template version. Its existing and future submissions appear only in that reviewer's queue; direct answer, evidence and evaluation links enforce the same assignment. Unassigned interviews and legacy sessions without an interview are not visible to named reviewers. Template approval is a separate assignment: in **Template approvals**, assign an active reviewer to each template version. Only that person may open its technical content and approve it. Candidate-review assignment does not grant template approval, and template-approval assignment does not grant access to candidate submissions. The same reviewer may receive both assignments. Reassignment takes effect on subsequent requests; deactivation or role changes remove both kinds of assignments.
+
+Existing approved templates and interview assignments are preserved. Template approver assignments start empty, so administrators must explicitly assign versions before named reviewers can see them. Previously approved templates remain available to recruiters. Recruiter catalogue endpoints and screens expose approved versions only; draft and retired versions are excluded.
+
+For password recovery, the administrator selects **Issue reset token**, shares it privately, and the user opens **Staff sign in > Reset password**. Tokens expire after 30 minutes and work once. Password reset revokes all existing sign-ins. Email delivery is not implemented. Activity history shows the latest 100 account, assignment and evaluation events.
+
+1. **Assign and approve a template:** administrator opens **Template approvals** and assigns a template version. Its approver opens **My template approvals**, inspects the content and approves it. Java templates must pass public and hidden reference tests first.
+2. **Schedule an interview:** recruiter opens **Create interview**, chooses an approved template, enters the title, brief and scheduled start, then creates it. **Build custom assessment** supports manual question-bank selection and duration.
+3. **Invite a candidate:** select the interview, enter candidate details and expiry, then generate an invitation. **Copy link**, **Copy message** and **Regenerate invitation** remain available on candidate rows. Share single invitations manually, or use **Candidate pool** for bulk generation, link export and optional configured email.
+4. **Complete the assessment:** candidate signs in, completes readiness checks, shares an entire screen, acknowledges monitoring and starts at or after the scheduled time.
+5. **Assign, review and publish:** administrator assigns the interview to a reviewer in **Staff sign in > Candidate review assignments**. The reviewer opens **My candidate reviews**, then **Answers & scoring**. MCQs are automatically scored; coding and written responses include reviewer criteria. **Proceed to final feedback** enables when all reviewer scores are valid. Save draft before leaving a candidate or reloading. Publication requires all scores, any required coding results and a recommendation. Template reviewer notes are optional.
+6. **Read the result:** recruiter selects **View evaluation** for a compact result. Technical answers, code and rubrics stay in the reviewer workspace. Unpublished template scores and feedback are not shown in the recruiter summary.
+
+## Candidate pool and bulk invitations
+
+1. In the recruiter workspace, open **Candidate pool**. Add/edit candidates individually or download the CSV template and select **Import candidates from CSV**.
+2. The CSV must include Name,Email; Skills,Experience are optional. Header matching is case-insensitive. Preview supports quoted commas/newlines, up to 1,000 rows and 1 MB. Invalid rows, repeated emails and existing pool candidates are identified. **Import valid candidates** revalidates on the backend and keeps existing records unchanged.
+3. Search by name/email, skill or minimum experience. Select up to 200 candidates across pages. Selection persists while filtering and paging.
+4. Choose a scheduled interview and invitation expiry, then **Preview invitations**. Review recipients, interview details and candidates already invited. Confirm **Generate invitations**. Existing invitations are skipped; their links, answers and reviews are preserved. Retrying a request after a lost response reuses the original batch.
+5. Use **Copy link**, **Show link** or **Download invitation CSV**. Saved batches can be reopened; the latest 20 are listed. Exports contain private invitation credentials and should be shared individually. Spreadsheet formula characters in exported fields are escaped.
+6. Email is disabled by default. When configured, bulk generation can queue individual emails. Batch rows show email status separately from assessment progress. **Accepted by mail server** does not prove inbox delivery. Queued/sending messages cannot be duplicated; failed or uncertain attempts reuse the same invitation. An uncertain outcome requires acknowledgement before retry. Reminders are explicit actions; expired/submitted invitations cannot be sent. There are no automatic reminder schedules or bounce/open tracking.
+
+The existing **Invite a candidate** form remains available. **Invite from candidate pool** preselects the current interview. Candidate-pool edits do not rewrite details on previously issued invitations. No resume upload or AI screening is included.
+
+### Optional email configuration (later)
+
+Set the following backend environment variables when a mail provider is available, then restart:
+
+| Variable | Purpose |
+|---|---|
+| INTERVIEW_PUBLIC_APP_URL | Candidate-facing deployed frontend URL, such as https://assessment.example.com/; the default localhost URL works only on the host computer |
+| INTERVIEW_EMAIL_ENABLED | true enables sending; defaults to false |
+| INTERVIEW_EMAIL_FROM | Sender email accepted by your provider |
+| INTERVIEW_SMTP_HOST / INTERVIEW_SMTP_PORT | Provider SMTP endpoint; port defaults to 587 |
+| INTERVIEW_SMTP_USERNAME / INTERVIEW_SMTP_PASSWORD | Provider credentials; keep these outside Git |
+| INTERVIEW_SMTP_STARTTLS | Required STARTTLS by default; disable only for a local test mail server |
+
+A persistent outbox processes explicitly queued messages on a separate worker so SMTP does not block assessment expiry tasks. Sending pauses if email is disabled. Interrupted sends become **Needs verification** rather than being retried automatically. Automated tests mock the mail sender; actual provider connectivity and delivery require verification after configuration. Staff password resets still use admin-issued tokens, not email.
+
+## Assessment catalogue and scoring
+
+All four templates contain 11 questions, allow 60 minutes and total 100 points. New versions are seeded as **Draft** and require reviewer approval before assignment.
+
+| Template | Questions | Point allocation |
+|---|---|---|
+| Java Backend Developer | 8 MCQs, 1 Java coding, 2 written | 16 MCQ + 30 coding tests + 54 reviewer rubric |
+| Java Full Stack Developer with Angular | 8 MCQs, 1 Java coding, 2 written | 16 MCQ + 30 coding tests + 54 reviewer rubric |
+| React Developer | 8 MCQs, 3 written | 40 MCQ + 60 reviewer rubric |
+| Cloud Operations Developer | 8 MCQs, 3 written | 40 MCQ + 60 reviewer rubric |
+
+The editor and runner support **Java 21 only**. React and Cloud Operations contain no coding questions and do not require Docker. Coding execution failures remain pending/error states rather than being graded as wrong answers.
+
+**Overall assessment score** combines automatic and reviewer points. The published 1-5 **overall assessment rating** is `round(total / 20)`, bounded to 1-5. Custom assessments retain a manually assigned reviewer rating. Readiness checks and monitoring events do not contribute to scores. Recommendations are selected by reviewers; scores do not automatically make hiring decisions. Published template evaluations are read-only.
+
+See [catalogue content and references](docs/assessment-catalogue.md) for authoring guidance. Add a new version when changing an assigned assessment; existing definitions and interview snapshots are preserved.
+
+## Saving, timers and monitoring
+
+- Changed candidate answers autosave every five seconds while monitoring checks pass. Navigation also saves. Failed saves retain browser drafts; the UI distinguishes pending edits from confirmed saves.
+- Warnings appear at five minutes and one minute remaining. At expiry, the backend submits saved answers automatically, including partial assessments. Late/offline edits cannot be included. If the backend was offline, overdue sessions are finalized after restart. The candidate sees completion only after server confirmation.
+- Manual submission allows a final review and requires acknowledgement of unanswered questions.
+- Browser monitoring uses permission checks and event-triggered webcam/shared-screen snapshots for focus changes, fullscreen exits and stream interruptions. There is no continuous audio/video recording. An unavailable webcam has a visible local-demo override; microphone and screen permissions remain required.
+- Snapshots are retained for 30 days by default, with reviewer deletion and scheduled cleanup. Technical events are not proof of misconduct. A browser cannot prevent tab/app switching or inspect another Windows user session.
+
+## Data and configuration
+
+| Item | Default |
+|---|---|
+| Main database | `backend/data/interviews.mv.db` |
+| Main invitation encryption key | `backend/data/invitation-link.key` |
+| Optional preview database | `backend/data/java-template/interviews.mv.db` |
+| Local database backups | `backend/data/backups/` |
+
+Start Maven from `backend` so relative paths remain consistent. Startup applies additive schema changes and inserts missing catalogue versions without replacing existing records. Back up the database **and invitation key** with the backend stopped. Database files, keys, dependencies and build outputs are excluded from Git.
+
+The optional **Preview: Java assessment template** launch configuration uses its own database and invitation key. Preview data is retained separately; it is not copied into main. Sign out and sign in again when switching databases because browser tokens belong to one database.
+
+Useful environment variables:
+
+| Variable | Purpose |
+|---|---|
+| `INTERVIEW_ADMIN_SETUP_CODE` | One-time first-administrator setup secret; required for bootstrap |
+| `INTERVIEW_DB_URL` / `INTERVIEW_DB_PASSWORD` | Main JDBC connection settings |
+| `INTERVIEW_INVITATION_KEY_FILE` | Invitation encryption-key location |
+| `INTERVIEW_CODING_ENABLED` | Enable/disable Java execution; defaults to false outside the launch configuration |
+| `INTERVIEW_CATALOGUE_ENABLED` | Enable/disable catalogue operations; defaults to true |
+| `INTERVIEW_EVIDENCE_RETENTION_DAYS` | Snapshot retention; defaults to 30 |
+| `JAVA_TEMPLATE_DB_URL` | Database override for the optional preview profile |
+
+Local invitation links work only on the computer running the app. Remote use requires deployment and corresponding frontend/API configuration.
+>>>>>>> 6eef7fb1fd265ac6980ab5f9f8336a8ffd582b41
 
 ## Verification
 
 ```powershell
 cd backend
+<<<<<<< HEAD
 mvn test
+=======
+mvn.cmd test
+>>>>>>> 6eef7fb1fd265ac6980ab5f9f8336a8ffd582b41
 ```
 
 ```powershell
@@ -47,6 +226,7 @@ npm.cmd test
 npm.cmd run build
 ```
 
+<<<<<<< HEAD
 API tests cover consent/readiness, candidate/reviewer role isolation, reviewer submission listing and review saving, question validation, idempotent retries, submission, deadlines, and persistence through an actual application restart. Component tests use mocked browser media and HTTP responses to cover the candidate journey, denial, interruption, backend failure, duplicate clicks, submission retry and stream cleanup.
 
 Before a Windows demo, manually verify real camera/microphone permissions and the OS screen picker in Chrome/Edge and Electron. Automated mocks do not validate physical devices or Electron capture support. Verify denial blocks progress, stopping sharing blocks answering, restore controls work, backend interruption preserves answers, and successful completion turns off device indicators.
@@ -147,3 +327,12 @@ Search by candidate name, email, interview title or session reference. Filter by
 `GET /api/review/sessions` now returns a paginated object (`items`, `page`, `size`, `total`, `totalPages`, `allCount`, `awaitingCount`, `reviewedCount`) rather than an unbounded array. SQL performs the search, filtering, stable ordering, counting and LIMIT/OFFSET pagination. Notes, question bodies and answers are loaded through the existing detail endpoint when a submission is opened. Query parameters are `page` (zero-based), `size`, `search`, `status` (AWAITING/REVIEWED/ALL), `interview`, `from` (inclusive epoch milliseconds), `to` (exclusive epoch milliseconds), and `sort` (OLDEST/NEWEST/REVIEWED_NEWEST).
 
 Filters and the current page survive opening a candidate and returning, and are stored in the browser tab's session storage for reload recovery. Signing out clears that state. After a review is saved, the same filtered page refreshes; if removing the reviewed row makes the last page disappear, the backend returns the nearest valid page. Failed page loads retain the previously displayed records and page. Restart the backend and refresh the frontend together when upgrading to this response format.
+=======
+Tests cover role/ownership isolation, invitations, deadlines, autosave, catalogue approval, scoring, publication, non-coding assessment flows and recruiter summaries. Backend tests use isolated in-memory databases and a mocked coding worker. Java reference validation uses the real Docker runner when approving a template.
+
+Camera/microphone permissions, screen selection and layout should also be checked in a real browser.
+
+## Current limits
+
+This is a local proof of concept. Native Windows integrity monitoring, continuous recording, transcripts, AI evaluation and production deployment/privacy workflows are not implemented. Staff password recovery currently needs an administrator-issued token. SSO/MFA, login rate limiting, multi-organization isolation, emailed recovery and a searchable/exportable long-term audit interface remain future work.
+>>>>>>> 6eef7fb1fd265ac6980ab5f9f8336a8ffd582b41

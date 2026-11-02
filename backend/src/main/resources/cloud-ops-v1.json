@@ -1,0 +1,222 @@
+{
+  "version": "cloud-ops-mid-v1",
+  "title": "Cloud Operations Developer - Mid-level",
+  "description": "Role-specific fundamentals and practical troubleshooting. 8 MCQs and 3 written scenarios; no coding questions.",
+  "durationMinutes": 60,
+  "skills": [
+    "Cloud operations",
+    "Kubernetes",
+    "IAM",
+    "Observability",
+    "Incident response",
+    "Recovery"
+  ],
+  "reviewerInstructions": "Score each written response against its rubric. Award points for specific, technically sound reasoning and trade-offs. Notes are optional. Publish only after every criterion is scored. The recommendation is a human judgment; this application does not make hiring decisions.",
+  "items": [
+    {
+      "id": "cloud-ops-v1-m1",
+      "kind": "MCQ",
+      "text": "Which Kubernetes probe determines whether a container is ready to receive service traffic?",
+      "choices": [
+        "Readiness probe",
+        "Liveness probe only",
+        "Image pull policy",
+        "CPU limit"
+      ],
+      "correctAnswer": "Readiness probe",
+      "explanation": "A readiness probe controls readiness for traffic; it does not by itself restart the container.",
+      "maxPoints": 5,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "cloud-ops-v1-m2",
+      "kind": "MCQ",
+      "text": "What is a primary purpose of a Kubernetes liveness probe?",
+      "choices": [
+        "Detect an unhealthy container that should be restarted",
+        "Store application backups",
+        "Assign IAM permissions",
+        "Encrypt DNS records"
+      ],
+      "correctAnswer": "Detect an unhealthy container that should be restarted",
+      "explanation": "A failing liveness probe can trigger a container restart.",
+      "maxPoints": 5,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "cloud-ops-v1-m3",
+      "kind": "MCQ",
+      "text": "When a startup probe is configured, when do liveness and readiness probes begin?",
+      "choices": [
+        "Before the image is pulled",
+        "Only after the startup probe succeeds",
+        "Only after the pod is deleted",
+        "Never"
+      ],
+      "correctAnswer": "Only after the startup probe succeeds",
+      "explanation": "Startup probes protect slow-starting applications from premature liveness and readiness checks.",
+      "maxPoints": 5,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "cloud-ops-v1-m4",
+      "kind": "MCQ",
+      "text": "Which access policy best follows least privilege?",
+      "choices": [
+        "Give every service administrator access",
+        "Grant only the actions and resources needed for its task",
+        "Share one root credential across services",
+        "Disable all audit logs"
+      ],
+      "correctAnswer": "Grant only the actions and resources needed for its task",
+      "explanation": "Least privilege restricts permissions to the resources, actions and conditions needed.",
+      "maxPoints": 5,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "cloud-ops-v1-m5",
+      "kind": "MCQ",
+      "text": "Which CloudWatch feature evaluates a metric against configured conditions and can trigger an action?",
+      "choices": [
+        "A metric alarm",
+        "A database transaction",
+        "A security group rule",
+        "A container image tag"
+      ],
+      "correctAnswer": "A metric alarm",
+      "explanation": "CloudWatch metric alarms evaluate metric data against defined conditions and can invoke configured actions.",
+      "maxPoints": 5,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "cloud-ops-v1-m6",
+      "kind": "MCQ",
+      "text": "What does a successful backup job alone prove?",
+      "choices": [
+        "Every recovery scenario will succeed",
+        "The application has no data loss risk",
+        "A backup was created; recovery still needs restore testing",
+        "No retention policy is needed"
+      ],
+      "correctAnswer": "A backup was created; recovery still needs restore testing",
+      "explanation": "Recovery assurance requires testing restores and validating the recovered application against recovery objectives.",
+      "maxPoints": 5,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "cloud-ops-v1-m7",
+      "kind": "MCQ",
+      "text": "After a deployment causes a sharp error-rate increase, what is the best first operational response?",
+      "choices": [
+        "Delete all production logs",
+        "Follow the incident procedure, stabilize service and assess rollback",
+        "Immediately rotate unrelated DNS zones",
+        "Scale every service to zero"
+      ],
+      "correctAnswer": "Follow the incident procedure, stabilize service and assess rollback",
+      "explanation": "A controlled incident response prioritizes service restoration and preserves evidence for diagnosis.",
+      "maxPoints": 5,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "cloud-ops-v1-m8",
+      "kind": "MCQ",
+      "text": "What should an alert intended to wake an on-call engineer normally indicate?",
+      "choices": [
+        "An actionable symptom with meaningful service impact",
+        "Any single debug log line",
+        "Every healthy readiness check",
+        "Every source-code comment"
+      ],
+      "correctAnswer": "An actionable symptom with meaningful service impact",
+      "explanation": "Actionable alerts reduce noise and direct attention to problems that require intervention.",
+      "maxPoints": 5,
+      "rubric": [],
+      "publicTests": [],
+      "hiddenTests": []
+    },
+    {
+      "id": "cloud-ops-v1-t1",
+      "kind": "TECHNICAL",
+      "text": "A new deployment increases latency and HTTP 5xx errors. Walk through the first 15 minutes of incident response, including communication and rollback decisions.",
+      "choices": [],
+      "maxPoints": 20,
+      "publicTests": [],
+      "hiddenTests": [],
+      "rubric": [
+        {
+          "id": "criterion-1",
+          "label": "Diagnosis and stabilization",
+          "maxPoints": 10,
+          "guidance": "0: destructive speculation. 1-4: checks logs only. 5-7: correlates deployment, metrics and dependency symptoms; chooses a safe rollback or mitigation. 8-10: prioritizes impact, tests hypotheses and considers rollback risk."
+        },
+        {
+          "id": "criterion-2",
+          "label": "Operational discipline",
+          "maxPoints": 10,
+          "guidance": "0: no coordination. 1-4: generic status updates. 5-7: incident roles, timeline, evidence preservation and clear updates. 8-10: verification criteria, follow-up ownership and alert improvements."
+        }
+      ]
+    },
+    {
+      "id": "cloud-ops-v1-t2",
+      "kind": "TECHNICAL",
+      "text": "A Kubernetes service intermittently sends requests to an application before it can serve them. Propose probe configuration and a safe way to verify the fix.",
+      "choices": [],
+      "maxPoints": 20,
+      "publicTests": [],
+      "hiddenTests": [],
+      "rubric": [
+        {
+          "id": "criterion-1",
+          "label": "Probe semantics and application design",
+          "maxPoints": 10,
+          "guidance": "0: confuses readiness and liveness. 1-4: adds a probe without reasoning. 5-7: distinguishes startup/readiness/liveness and meaningful endpoints. 8-10: handles dependency checks, false positives and timeout thresholds."
+        },
+        {
+          "id": "criterion-2",
+          "label": "Safe rollout and verification",
+          "maxPoints": 10,
+          "guidance": "0: direct unverified production change. 1-4: manual checks only. 5-7: staged rollout, traffic checks, events and rollback. 8-10: failure injection and monitoring for restart storms or dropped traffic."
+        }
+      ]
+    },
+    {
+      "id": "cloud-ops-v1-t3",
+      "kind": "TECHNICAL",
+      "text": "Design recovery for a stateful service with a 15-minute recovery-point objective and a one-hour recovery-time objective. Include access control and restore testing.",
+      "choices": [],
+      "maxPoints": 20,
+      "publicTests": [],
+      "hiddenTests": [],
+      "rubric": [
+        {
+          "id": "criterion-1",
+          "label": "Recovery design",
+          "maxPoints": 10,
+          "guidance": "0: assumes backups equal recovery. 1-4: generic backup schedule. 5-7: maps RPO/RTO to backups, replication and runbooks. 8-10: discusses consistency, dependency recovery and realistic restore timing."
+        },
+        {
+          "id": "criterion-2",
+          "label": "Security and validation",
+          "maxPoints": 10,
+          "guidance": "0: no controls or tests. 1-4: mentions encryption. 5-7: least privilege, encryption, isolation and routine restore drills. 8-10: tests integrity, retention failures and recovery evidence against objectives."
+        }
+      ]
+    }
+  ]
+}
