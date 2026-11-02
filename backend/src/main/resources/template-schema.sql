@@ -14,3 +14,5 @@ CREATE INDEX IF NOT EXISTS template_queue_idx ON assessment_templates(status,upd
 ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS description VARCHAR(4000);
 
 ALTER TABLE assessment_templates ADD COLUMN IF NOT EXISTS coding_required BOOLEAN;
+CREATE TABLE IF NOT EXISTS template_review_assignments (version VARCHAR(80) PRIMARY KEY REFERENCES assessment_templates(version), reviewer_id VARCHAR(80) NOT NULL REFERENCES recruiters(id));
+CREATE INDEX IF NOT EXISTS template_reviewer_idx ON template_review_assignments(reviewer_id,version);
