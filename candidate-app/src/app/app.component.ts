@@ -221,8 +221,17 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
   camera?: MediaStream;
   microphone?: MediaStream;
   screen?: MediaStream;
+  get cameraGranted() {
+    return (
+      this.checks.find((c) => c.key === 'camera')?.status === 'passed' &&
+      Boolean(this.camera?.getVideoTracks().some((track) => track.readyState === 'live'))
+    );
+  }
   get allPassed() {
-    return this.checks.filter((c) => c.key !== 'desktop').every((c) => c.status === 'passed');
+    return (
+      this.cameraGranted &&
+      this.checks.filter((c) => c.key !== 'desktop').every((c) => c.status === 'passed')
+    );
   }
   get expired() {
     return this.deadline > 0 && this.remainingSeconds <= 0;
@@ -1000,37 +1009,43 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
     this.busy = true;
     this.message = '';
     try {
-      const health = await this.request<{ evidenceRetentionDays: number }>('/health');
-      this.evidenceRetentionDays = health.evidenceRetentionDays;
-      this.setCheck('service', 'passed', 'Backend reachable');
-    } catch {
-      this.setCheck('service', 'failed', 'Start backend on port 8080');
-    }
-    for (const key of ['camera', 'microphone'] as const) {
-      const previous = this[key];
-      this[key] = undefined;
-      this.stop(previous);
-      try {
-        const s = await navigator.mediaDevices.getUserMedia({
-          video: key === 'camera',
-          audio: key === 'microphone',
-        });
-        this[key] = s;
-        this.watch(s, key);
-        this.setCheck(key, 'passed', 'Stream active');
-      } catch {
-        if (key === 'camera') {
-          this.setCheck(
-            key,
-            'passed',
-            'Demo override: webcam unavailable; only actual screen snapshots can be captured'
-          );
-        } else {
-          this.setCheck(key, 'failed', 'Permission or device unavailable');
+      for (const key of ['camera', 'microphone'] as const) {
+        const previous = this[key];
+        this[key] = undefined;
+        this.stop(previous);
+        this.setCheck(key, 'pending', key === 'camera' ? 'Request camera stream' : undefined);
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: key === 'camera',
+            audio: key === 'microphone',
+          });
+          if (key === 'camera' && !stream.getVideoTracks().some((track) => track.readyState === 'live')) {
+            this.stop(stream);
+            throw new Error('No active webcam video track');
+          }
+          this[key] = stream;
+          this.watch(stream, key);
+          this.setCheck(key, 'passed', 'Stream active');
+        } catch {
+          if (key === 'camera') {
+            this.setCheck(key, 'failed', 'Camera permission and an active webcam are required');
+            this.message =
+              'Camera access is required to continue. Allow camera permission and retry device checks.';
+          } else {
+            this.setCheck(key, 'failed', 'Permission or device unavailable');
+          }
         }
       }
+      try {
+        const health = await this.request<{ evidenceRetentionDays: number }>('/health');
+        this.evidenceRetentionDays = health.evidenceRetentionDays;
+        this.setCheck('service', 'passed', 'Backend reachable');
+      } catch {
+        this.setCheck('service', 'failed', 'Start backend on port 8080');
+      }
+    } finally {
+      this.busy = false;
     }
-    this.busy = false;
   }
   async shareScreen() {
     if (this.busy) return;
@@ -1363,6 +1378,11 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
           fullscreenError = String(e);
         }
       }
+      if (!this.cameraGranted) {
+        this.message =
+          'Camera access is required to start the interview. Restore camera permission and run the device checks again.';
+        return;
+      }
       this.fullscreenRequired = Boolean(document.fullscreenElement);
       this.fullscreenWarning = !this.fullscreenRequired;
       if (!this.fullscreenRequired)
@@ -1377,8 +1397,19 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
         sessionStorage.setItem('interviewSession', s.id);
       }
       let s = await this.request<Session>(`/sessions/${this.sessionId}`);
-      if (s.state === 'READY')
+      if (s.state === 'READY') {
+        if (!this.cameraGranted) {
+          this.message =
+            'Camera access is required to start the interview. Restore camera permission and run the device checks again.';
+          return;
+        }
         s = await this.request<Session>(`/sessions/${this.sessionId}/start`, {});
+      }
+      if (!this.cameraGranted) {
+        this.message =
+          'Camera access is required to start the interview. Restore camera permission and run the device checks again.';
+        return;
+      }
       this.apply(s, true);
       if (this.fullscreenWarning)
         this.message = `Could not enable fullscreen: ${fullscreenError || 'the browser denied the request'}. You can continue, but tab and app switching cannot be prevented.`;

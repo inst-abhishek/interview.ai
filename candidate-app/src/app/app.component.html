@@ -903,9 +903,7 @@
               ><span class="status" [ngClass]="c.status">{{
                 c.key === 'desktop'
                   ? 'not implemented'
-                  : c.key === 'camera' && c.detail.startsWith('Demo override')
-                    ? 'passed (demo)'
-                    : c.status
+                  : c.status
               }}</span>
             </div>
             <p>{{ c.detail }}</p>
@@ -917,22 +915,21 @@
         <section class="evidence-choice" aria-labelledby="evidence-choice-title">
           <div>
             <span class="eyebrow">REQUIRED INTERVIEW MONITORING</span>
-            <h3 id="evidence-choice-title">Event-based integrity snapshots</h3>
+            <h3 id="evidence-choice-title">Required camera and event-based integrity snapshots</h3>
             <p>
-              During the assessment, a still image from your live webcam (when available) and
-              shared-screen stream will be captured when you switch browser tabs, exit fullscreen,
-              move focus away from the interview window, or a camera/screen stream stops. If no
-              webcam is available, only actual shared-screen frames can be captured. Reviewers can
-              view these images. They are retained for up to {{ evidenceRetentionDays }} days, then
-              deleted. The assessment requests fullscreen, but browsers cannot prevent tab or app
-              switching.
+              Camera permission and an active webcam are required before the assessment can begin.
+              During the assessment, a still image from your live webcam and shared-screen stream
+              will be captured when you switch browser tabs, exit fullscreen, move focus away from
+              the interview window, or a camera/screen stream stops. Reviewers can view these
+              images. They are retained for up to {{ evidenceRetentionDays }} days, then deleted.
+              The assessment requests fullscreen, but browsers cannot prevent tab or app switching.
             </p>
           </div>
           <span class="unavailable-tag">Acknowledgement required</span>
         </section>
         <p class="help">
-          Camera, mic and screen access require browser permission. Some system policies may block
-          screen capture. The native integrity agent is not implemented.
+          Camera access is mandatory. Camera, mic and screen access require browser permission. Some
+          system policies may block screen capture. The native integrity agent is not implemented.
         </p>
         <p *ngIf="!token" class="help">
           Sign in using the button in the header before continuing to instructions.
@@ -965,12 +962,12 @@
           <div class="check">
             <h3>Monitoring Scope</h3>
             <p>
-              No continuous video or audio is recorded. During the assessment, still images from
-              your live webcam (when available) and shared-screen stream will be captured when you
-              switch browser tabs, exit fullscreen, move focus away from the interview window, or a
-              camera/screen stream stops. Fullscreen exits are recorded, but browsers cannot lock
-              tabs or other apps. If no webcam is available, only actual shared-screen frames can be
-              captured. Reviewers can view the images; they are retained for up to
+              No continuous video or audio is recorded. Camera permission and an active webcam are
+              required before the assessment can begin. During the assessment, still images from
+              your live webcam and shared-screen stream will be captured when you switch browser
+              tabs, exit fullscreen, move focus away from the interview window, or a camera/screen
+              stream stops. Fullscreen exits are recorded, but browsers cannot lock tabs or other
+              apps. Reviewers can view the images; they are retained for up to
               {{ evidenceRetentionDays }} days and then deleted. These technical events are not
               proof of misconduct.
             </p>
@@ -981,8 +978,8 @@
           monitoring scope above.</label
         ><label class="consent evidence-consent"
           ><input type="checkbox" [(ngModel)]="evidenceConsent" /> I understand and acknowledge that
-          event-triggered screenshots from available live media streams are required for this
-          interview and will be available to the reviewer for up to
+          event-triggered screenshots from my active webcam and shared-screen stream are required
+          for this interview and will be available to the reviewer for up to
           {{ evidenceRetentionDays }} days.</label
         >
         <div class="actions">
