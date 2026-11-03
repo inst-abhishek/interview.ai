@@ -11,6 +11,7 @@
         "INTERVIEW_REVIEWER_CODE": "reviewdemo",
         "INTERVIEW_RECRUITER_SETUP_CODE": "exl-recruiter-setup",
         "INTERVIEW_ADMIN_SETUP_CODE": "exl-admin-setup",
+        "INTERVIEW_CANDIDATE_AI_DEMO": "true",
         "INTERVIEW_CODING_ENABLED": "true"
       },
       "command": "mvn.cmd spring-boot:run"

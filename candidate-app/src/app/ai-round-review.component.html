@@ -1,0 +1,163 @@
+<p *ngIf="error" class="notice" role="alert">{{ error }}</p>
+<p *ngIf="notice" class="review-success" role="status">{{ notice }}</p>
+<section *ngIf="!detail" class="panel">
+  <div class="round-review-heading">
+    <div>
+      <h2>AI preliminary round reviews</h2>
+      <p class="help">
+        Only assigned submissions. You score the approved rubric; AI does not evaluate candidates.
+      </p>
+    </div>
+    <button class="secondary" (click)="refresh()" [disabled]="busy">Refresh</button>
+  </div>
+  <p>{{ total }} submitted or previously started, skipped rounds</p>
+  <div class="round-review-list">
+    <button *ngFor="let item of items" class="secondary" (click)="open(item.ID)" [disabled]="busy">
+      <strong>{{ item.CANDIDATE_NAME }}</strong
+      ><span>{{ item.TITLE }}</span
+      ><small>{{
+        item.STATE === 'FEEDBACK_PUBLISHED'
+          ? 'Feedback published'
+          : item.STATE === 'SKIPPED'
+            ? 'Skipped - retained record'
+            : 'Awaiting human review'
+      }}</small>
+    </button>
+  </div>
+  <p *ngIf="!items.length" class="help">
+    No assigned AI interviews to review yet. Your queue receives submissions from processes whose
+    Assessment 1 is assigned to you.
+  </p>
+  <div class="round-review-actions">
+    <button class="secondary" (click)="changePage(page - 1)" [disabled]="busy || page === 0">
+      Previous</button
+    ><span>{{ page + 1 }} / {{ pages }}</span
+    ><button
+      class="secondary"
+      (click)="changePage(page + 1)"
+      [disabled]="busy || page >= pages - 1"
+    >
+      Next
+    </button>
+  </div>
+</section>
+<section *ngIf="detail as d" class="panel">
+  <button class="app-back" (click)="back()"><span aria-hidden="true">&larr;</span> Back</button>
+  <div class="round-review-heading">
+    <div>
+      <h2>{{ d.candidate.CANDIDATE_NAME }}</h2>
+      <p class="help">{{ d.candidate.CANDIDATE_EMAIL }} &middot; {{ d.plan.title }}</p>
+    </div>
+    <strong>{{
+      d.attempt.STATE === 'FEEDBACK_PUBLISHED'
+        ? 'Feedback published'
+        : d.attempt.STATE === 'SKIPPED'
+          ? 'Skipped by recruiter'
+          : 'Human review draft'
+    }}</strong>
+  </div>
+  <p *ngIf="d.attempt.STATE === 'SKIPPED'" class="notice">
+    The recruiter skipped this round. Saved conversation and any published feedback remain
+    unchanged; editing is disabled.
+  </p>
+  <p *ngIf="dirty" class="help">Unsaved review changes</p>
+  <div class="round-review-layout">
+    <nav aria-label="Interview topics">
+      <button
+        *ngFor="let t of d.plan.topics; let i = index"
+        class="secondary"
+        [class.active]="topicIndex === i"
+        (click)="topicIndex = i"
+      >
+        Topic {{ i + 1 }}
+      </button>
+    </nav>
+    <div *ngIf="topic">
+      <h3>{{ topic.text }}</h3>
+      <div class="round-review-conversation">
+        <article *ngFor="let turn of conversation">
+          <strong
+            >{{ turn.role === 'CANDIDATE' ? 'Candidate' : 'Interviewer'
+            }}<small *ngIf="turn.followUp"> &middot; Follow-up</small></strong
+          >
+          <p>{{ turn.text }}</p>
+          <small>{{ turn.at | date: 'mediumTime' }}</small>
+        </article>
+        <p *ngIf="!conversation.length" class="help">
+          This topic was not reached before the round ended.
+        </p>
+      </div>
+      <div *ngIf="d.attempt.DRAFT_TEXT && topicIndex === draftTopic" class="round-review-draft">
+        <strong>Saved unfinished draft</strong>
+        <p>{{ d.attempt.DRAFT_TEXT }}</p>
+        <small
+          >This text was saved but not sent before the round ended. Check the full conversation
+          context before scoring.</small
+        >
+      </div>
+      <h3>Human scoring rubric</h3>
+      <article *ngFor="let c of topic.rubric" class="round-review-criterion">
+        <strong>{{ c.label }}</strong>
+        <p>{{ c.guidance }}</p>
+        <label
+          >Points (0&ndash;{{ c.maxPoints }})<input
+            type="number"
+            [(ngModel)]="mark(c.id).points"
+            (ngModelChange)="dirty = true"
+            [min]="0"
+            [max]="c.maxPoints"
+            [disabled]="locked || busy"
+        /></label>
+      </article>
+      <div class="round-review-actions">
+        <button
+          class="secondary"
+          (click)="topicIndex = topicIndex - 1"
+          [disabled]="topicIndex === 0"
+        >
+          Previous topic</button
+        ><button
+          class="secondary"
+          (click)="topicIndex = topicIndex + 1"
+          [disabled]="topicIndex >= d.plan.topics.length - 1"
+        >
+          Next topic
+        </button>
+      </div>
+    </div>
+  </div>
+  <section class="round-review-final">
+    <h3>Final feedback</h3>
+    <label
+      >Notes (optional)<textarea
+        [(ngModel)]="notes"
+        (ngModelChange)="dirty = true"
+        rows="4"
+        maxlength="5000"
+        [disabled]="locked || busy"
+      ></textarea></label
+    ><label
+      >Human recommendation<select
+        [(ngModel)]="recommendation"
+        (ngModelChange)="dirty = true"
+        [disabled]="locked || busy"
+      >
+        <option value="">Choose a recommendation</option>
+        <option value="SHORTLIST">Shortlist</option>
+        <option value="HOLD">Hold</option>
+        <option value="REJECT">Reject</option>
+      </select></label
+    >
+    <p class="help">
+      Publishing feedback does not invite the next round. The recruiter decides whether to advance,
+      pause or end the process.
+    </p>
+    <div class="round-review-actions">
+      <button class="secondary" (click)="save(false)" [disabled]="busy || locked || !dirty">
+        Save review draft</button
+      ><button (click)="save(true)" [disabled]="busy || locked || !complete">
+        Publish human feedback
+      </button>
+    </div>
+  </section>
+</section>

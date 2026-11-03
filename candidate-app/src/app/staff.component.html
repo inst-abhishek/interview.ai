@@ -101,23 +101,28 @@
       Manage staff accounts, interview ownership for review and recent activity. Account changes
       revoke existing sign-ins.
     </p>
-    <nav class="staff-actions">
-      <button
-        *ngFor="let t of ['accounts', 'templates', 'assignments', 'activity']"
-        [class.secondary]="tab !== t"
-        (click)="tab = t; resetResult = ''"
-      >
-        {{
-          t === 'accounts'
-            ? 'Staff accounts'
-            : t === 'templates'
-              ? 'Template approvals'
-              : t === 'assignments'
-                ? 'Candidate review assignments'
-                : 'Activity history'
-        }}</button
-      ><button class="secondary" (click)="reload()" [disabled]="busy">Refresh</button>
-    </nav>
+    <div class="staff-navigation">
+      <nav class="staff-tabs" aria-label="Administration sections">
+        <button
+          *ngFor="let t of ['accounts', 'templates', 'assignments', 'activity']"
+          [class.active]="tab === t"
+          [disabled]="busy"
+          [attr.aria-current]="tab === t ? 'page' : null"
+          (click)="tab = t; resetResult = ''"
+        >
+          {{
+            t === 'accounts'
+              ? 'Staff accounts'
+              : t === 'templates'
+                ? 'Template approvals'
+                : t === 'assignments'
+                  ? 'Candidate review assignments'
+                  : 'Activity history'
+          }}
+        </button>
+      </nav>
+      <button class="secondary" (click)="reload()" [disabled]="busy">Refresh</button>
+    </div>
     <section class="panel" *ngIf="tab === 'accounts'">
       <h2>Create staff account</h2>
       <form class="create-grid" (ngSubmit)="create()">
@@ -211,32 +216,169 @@
           (focus)="$any($event.target).select()"
       /></label>
     </section>
-    <section class="panel" *ngIf="tab === 'assignments'">
-      <h2>Assign candidate submission reviews</h2>
-      <p>
-        Assign the person who will score candidate answers for this scheduled interview. This does
-        not grant template approval access. Unassigned interviews remain outside reviewer queues.
+    <section class="panel" *ngIf="tab === 'assignments'" aria-labelledby="assignments-title">
+      <h2 id="assignments-title">Candidate review assignments</h2>
+      <p class="help">
+        Assign a reviewer to each scheduled assessment. The assignment covers standalone and hiring
+        process submissions, including its linked AI preliminary reviews. Template approvals are
+        assigned separately.
       </p>
-      <p *ngIf="!assignments.length">Create an interview in the recruiter workspace first.</p>
-      <div class="assignment" *ngFor="let a of assignments">
-        <div>
-          <strong>{{ a.TITLE }}</strong
-          ><small>Recruiter: {{ a.RECRUITER_NAME }}</small
-          ><small>Scheduled: {{ a.SCHEDULED_AT | date: 'medium' }}</small
-          ><small>Template: {{ a.TEMPLATE_VERSION || 'Custom assessment' }}</small>
-        </div>
+      <form class="assignment-filters" (ngSubmit)="filterAssignments()">
         <label
-          >Candidate reviewer<select
-            [ngModel]="a.REVIEWER_ID || ''"
-            (ngModelChange)="assign(a.ID, $event)"
-            [disabled]="busy"
-          >
-            <option [ngValue]="''">Unassigned</option>
-            <option *ngFor="let r of reviewers" [ngValue]="r.id">
-              {{ r.name }} ({{ r.email }})
-            </option>
+          >Assessment<input
+            name="assessmentSearch"
+            [(ngModel)]="assignmentFilters.search"
+            maxlength="200"
+            placeholder="Search assessment title"
+        /></label>
+        <label
+          >Recruiter<input
+            name="recruiterSearch"
+            [(ngModel)]="assignmentFilters.recruiter"
+            maxlength="200"
+            placeholder="Search recruiter name"
+        /></label>
+        <label
+          >Reviewer<input
+            name="reviewerFilter"
+            [(ngModel)]="assignmentFilters.reviewer"
+            maxlength="200"
+            placeholder="Name or email"
+        /></label>
+        <label
+          >Assignment<select name="assignmentStatus" [(ngModel)]="assignmentFilters.status">
+            <option value="ALL">All assignments</option>
+            <option value="ASSIGNED">Assigned</option>
+            <option value="UNASSIGNED">Unassigned</option>
           </select></label
         >
+        <button [disabled]="busy">Apply filters</button>
+      </form>
+      <p class="help">
+        Changes are saved only when you select Save. Unsaved selections are retained while changing
+        pages.
+      </p>
+      <div class="table-scroll">
+        <table class="assignment-table">
+          <thead>
+            <tr>
+              <th>Assessment</th>
+              <th>Recruiter</th>
+              <th>Scheduled</th>
+              <th>Process usage</th>
+              <th>Assigned reviewer</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <ng-container *ngFor="let a of assignments"
+              ><tr>
+                <td>
+                  <strong>{{ a.TITLE }}</strong
+                  ><small>{{ a.TEMPLATE_VERSION || 'Custom assessment' }}</small>
+                </td>
+                <td>{{ a.RECRUITER_NAME }}</td>
+                <td>{{ a.SCHEDULED_AT | date: 'medium' }}</td>
+                <td>
+                  <button
+                    *ngIf="a.PROCESS_COUNT; else noProcess"
+                    class="secondary"
+                    (click)="showProcesses(a.ID)"
+                    [disabled]="busy"
+                    [attr.aria-expanded]="processesFor === a.ID"
+                  >
+                    {{ a.PROCESS_COUNT }} hiring
+                    {{ a.PROCESS_COUNT === 1 ? 'process' : 'processes' }}</button
+                  ><ng-template #noProcess
+                    ><span class="help">No linked processes</span></ng-template
+                  >
+                </td>
+                <td>
+                  <details class="reviewer-picker">
+                    <summary>{{ a.REVIEWER_NAME || 'Unassigned' }} &middot; Change</summary>
+                    <label
+                      >Find reviewer<input
+                        [(ngModel)]="reviewerSearch[a.ID]"
+                        placeholder="Name or email"
+                        maxlength="200"
+                        [attr.aria-label]="'Find reviewer for ' + a.TITLE"
+                    /></label>
+                    <button class="secondary" (click)="findReviewers(a.ID)" [disabled]="busy">
+                      Search reviewers
+                    </button>
+                    <small>Up to 20 matches. Narrow your search to find a reviewer.</small>
+                    <label
+                      >Reviewer<select [(ngModel)]="assignmentDrafts[a.ID]" [disabled]="busy">
+                        <option value="">Unassigned</option>
+                        <option *ngFor="let r of optionsFor(a)" [value]="r.ID">
+                          {{ r.NAME }} ({{ r.EMAIL }})
+                        </option>
+                      </select></label
+                    >
+                  </details>
+                  <small *ngIf="assignmentDrafts[a.ID] !== (a.REVIEWER_ID || '')" class="unsaved"
+                    >Unsaved change</small
+                  >
+                </td>
+                <td>
+                  <button
+                    (click)="assign(a.ID, assignmentDrafts[a.ID])"
+                    [disabled]="busy || assignmentDrafts[a.ID] === (a.REVIEWER_ID || '')"
+                    [attr.aria-label]="'Save reviewer for ' + a.TITLE"
+                  >
+                    {{ busy ? 'Please wait...' : 'Save' }}
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="processesFor === a.ID">
+                <td colspan="6">
+                  <strong>Hiring processes using {{ a.TITLE }}</strong>
+                  <ul>
+                    <li *ngFor="let p of assignmentProcesses">{{ p.TITLE }}</li>
+                  </ul>
+                  <div class="assignment-pagination">
+                    <button
+                      class="secondary"
+                      (click)="showProcesses(a.ID, processUsagePage - 1)"
+                      [disabled]="busy || processUsagePage === 0"
+                    >
+                      Previous</button
+                    ><span>Page {{ processUsagePage + 1 }} of {{ processUsagePages }}</span
+                    ><button
+                      class="secondary"
+                      (click)="showProcesses(a.ID, processUsagePage + 1)"
+                      [disabled]="busy || processUsagePage + 1 >= processUsagePages"
+                    >
+                      Next</button
+                    ><button class="secondary" (click)="processesFor = ''">Close</button>
+                  </div>
+                </td>
+              </tr></ng-container
+            >
+          </tbody>
+        </table>
+      </div>
+      <p *ngIf="!assignments.length" role="status">
+        No assessments match these filters. Try a different search or assignment status.
+      </p>
+      <div class="assignment-pagination">
+        <span role="status">{{ assignmentTotal }} matching assessments &middot; 10 per page</span>
+        <div>
+          <button
+            class="secondary"
+            (click)="changeAssignmentPage(assignmentPage - 1)"
+            [disabled]="busy || assignmentPage === 0"
+          >
+            Previous</button
+          ><span>Page {{ assignmentPage + 1 }} of {{ assignmentPages }}</span
+          ><button
+            class="secondary"
+            (click)="changeAssignmentPage(assignmentPage + 1)"
+            [disabled]="busy || assignmentPage + 1 >= assignmentPages"
+          >
+            Next
+          </button>
+        </div>
       </div>
     </section>
     <section class="panel" *ngIf="tab === 'templates'">

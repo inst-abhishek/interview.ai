@@ -436,6 +436,18 @@ public class StaffAccess {
                 case "REVIEW_SAVED" -> "Saved a candidate review.";
                 case "EVALUATION_SAVED" -> "Saved an evaluation draft.";
                 case "EVALUATION_PUBLISHED" -> "Published a candidate evaluation.";
+                case "AI_PLAN_APPROVED" -> "Approved an AI preliminary interview plan.";
+                case "HIRING_PROCESS_CREATED" -> "Created a hiring process.";
+                case "PROCESS_CANDIDATES_INVITED" -> "Invited candidates to a hiring process.";
+                case "AI_REVIEW_WAIVED" -> "Waived human review of an AI preliminary round.";
+                case "AI_ROUND_SKIPPED" -> "Skipped a candidate's AI preliminary round.";
+                case "AI_ROUND_SKIPPED_ALL" -> "Skipped AI preliminary rounds for all invited candidates.";
+                case "PROCESS_HOLD" -> "Paused a candidate's hiring process.";
+                case "PROCESS_RESUME" -> "Resumed a candidate's hiring process.";
+                case "PROCESS_END" -> "Closed a candidate's hiring process.";
+                case "PROCESS_INVITE_NEXT" -> "Invited a candidate to the next assessment round.";
+                case "AI_INTERVIEW_REVIEW_SAVED" -> "Saved an AI interview review draft.";
+                case "AI_INTERVIEW_REVIEW_PUBLISHED" -> "Published a human review of an AI interview.";
                 default -> "Recorded an activity.";
             };
             String detail;
@@ -570,7 +582,98 @@ public class StaffAccess {
     ) {
         authenticate(h, "ADMIN");
         return db.queryForList(
-            "SELECT j.id,j.title,j.scheduled_at,j.template_version,o.name AS recruiter_name,a.reviewer_id,r.name AS reviewer_name FROM interviews j JOIN recruiters o ON o.id=j.recruiter_id LEFT JOIN reviewer_assignments a ON a.interview_id=j.id LEFT JOIN recruiters r ON r.id=a.reviewer_id ORDER BY j.created_at DESC"
+            "SELECT j.id,j.title,j.scheduled_at,j.template_version,(SELECT LISTAGG(DISTINCT hp.title, ' / ') WITHIN GROUP (ORDER BY hp.title) FROM hiring_rounds hr JOIN hiring_processes hp ON hp.id=hr.process_id WHERE hr.interview_id=j.id) AS process_titles,o.name AS recruiter_name,a.reviewer_id,r.name AS reviewer_name FROM interviews j JOIN recruiters o ON o.id=j.recruiter_id LEFT JOIN reviewer_assignments a ON a.interview_id=j.id LEFT JOIN recruiters r ON r.id=a.reviewer_id ORDER BY j.created_at DESC"
+        );
+    }
+
+    @GetMapping("/assignments/page")
+    public Map<String, Object> assignmentPage(
+        @RequestHeader(value = "Authorization", required = false) String h,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "") String search,
+        @RequestParam(defaultValue = "") String recruiter,
+        @RequestParam(defaultValue = "") String reviewer,
+        @RequestParam(defaultValue = "ALL") String status
+    ) {
+        authenticate(h, "ADMIN");
+        if (!Set.of("ALL", "ASSIGNED", "UNASSIGNED").contains(status)) throw error(
+            400,
+            "Choose a valid assignment status"
+        );
+        String joins =
+            " FROM interviews j JOIN recruiters o ON o.id=j.recruiter_id LEFT JOIN reviewer_assignments a ON a.interview_id=j.id LEFT JOIN recruiters r ON r.id=a.reviewer_id";
+        String where =
+            " WHERE LOWER(j.title) LIKE ? ESCAPE '!' AND LOWER(o.name) LIKE ? ESCAPE '!' AND LOWER(COALESCE(r.name,'') || ' ' || COALESCE(r.email,'')) LIKE ? ESCAPE '!'";
+        if (status.equals("ASSIGNED")) where += " AND a.reviewer_id IS NOT NULL";
+        if (status.equals("UNASSIGNED")) where += " AND a.reviewer_id IS NULL";
+        Object[] filters = {
+            assignmentPattern(search),
+            assignmentPattern(recruiter),
+            assignmentPattern(reviewer)
+        };
+        long total = db.queryForObject("SELECT COUNT(*)" + joins + where, Long.class, filters);
+        int pages = Math.max(1, (int) ((total + 9) / 10));
+        int current = Math.max(0, Math.min(page, pages - 1));
+        var args = new ArrayList<Object>(Arrays.asList(filters));
+        args.add(10);
+        args.add(current * 10);
+        var items = db.queryForList(
+            "SELECT j.id,j.title,j.scheduled_at,j.template_version,o.name AS recruiter_name,a.reviewer_id,r.name AS reviewer_name,r.email AS reviewer_email,(SELECT COUNT(DISTINCT hr.process_id) FROM hiring_rounds hr WHERE hr.interview_id=j.id) AS process_count" +
+                joins +
+                where +
+                " ORDER BY j.created_at DESC,j.id LIMIT ? OFFSET ?",
+            args.toArray()
+        );
+        return Map.of("items", items, "page", current, "pages", pages, "total", total);
+    }
+
+    private String assignmentPattern(String value) {
+        if (value.length() > 200) throw error(400, "Search must be 200 characters or fewer");
+        return (
+            "%" +
+            value
+                .trim()
+                .toLowerCase(Locale.ROOT)
+                .replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_") +
+            "%"
+        );
+    }
+
+    @GetMapping("/assignments/{id}/processes")
+    public Map<String, Object> assignmentProcesses(
+        @RequestHeader(value = "Authorization", required = false) String h,
+        @PathVariable String id,
+        @RequestParam(defaultValue = "0") int page
+    ) {
+        authenticate(h, "ADMIN");
+        long total = db.queryForObject(
+            "SELECT COUNT(DISTINCT process_id) FROM hiring_rounds WHERE interview_id=?",
+            Long.class,
+            id
+        );
+        int pages = Math.max(1, (int) ((total + 19) / 20));
+        int current = Math.max(0, Math.min(page, pages - 1));
+        var items = db.queryForList(
+            "SELECT DISTINCT hp.id,hp.title FROM hiring_rounds hr JOIN hiring_processes hp ON hp.id=hr.process_id WHERE hr.interview_id=? ORDER BY hp.title,hp.id LIMIT 20 OFFSET ?",
+            id,
+            current * 20
+        );
+        return Map.of("items", items, "page", current, "pages", pages);
+    }
+
+    @GetMapping("/reviewer-options")
+    public List<Map<String, Object>> reviewerOptions(
+        @RequestHeader(value = "Authorization", required = false) String h,
+        @RequestParam(defaultValue = "") String search
+    ) {
+        authenticate(h, "ADMIN");
+        String pattern = assignmentPattern(search);
+        return db.queryForList(
+            "SELECT id,name,email FROM recruiters WHERE active=TRUE AND staff_role='REVIEWER' AND (LOWER(name) LIKE ? ESCAPE '!' OR LOWER(email) LIKE ? ESCAPE '!') ORDER BY name,id LIMIT 20",
+            pattern,
+            pattern
         );
     }
 
@@ -604,6 +707,11 @@ public class StaffAccess {
                 c.reviewerId()
             );
         }
+        db.update(
+            "UPDATE hiring_rounds SET reviewer_id=? WHERE kind='AI_PRELIMINARY' AND process_id IN (SELECT process_id FROM hiring_rounds WHERE position=1 AND interview_id=?)",
+            c.reviewerId() == null || c.reviewerId().isBlank() ? null : c.reviewerId(),
+            id
+        );
         audit(
             actor.id(),
             "REVIEWER_ASSIGNED",

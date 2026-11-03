@@ -1,0 +1,659 @@
+<div class="process-workspace">
+  <dialog
+    #roundInviteDialog
+    class="round-invite-dialog"
+    aria-labelledby="round-invite-title"
+    (cancel)="busy ? $event.preventDefault() : cancelRoundInvite()"
+    (close)="cancelRoundInvite()"
+  >
+    <form *ngIf="pendingRoundInvite as invite" (ngSubmit)="confirmRoundInvite(roundInviteDialog)">
+      <h2 id="round-invite-title">Invite candidate to this round?</h2>
+      <p>
+        <strong>{{ invite.candidate.CANDIDATE_NAME }}</strong
+        ><small>{{ invite.candidate.CANDIDATE_EMAIL }}</small>
+      </p>
+      <div class="process-card">
+        <strong>{{ invite.title }}</strong
+        ><small>Round {{ invite.number }} of {{ invite.total }}</small>
+      </div>
+      <p>
+        This makes the displayed assessment available through the candidate's process link. It does
+        not skip this assessment or move them beyond it. No email is sent; share the invitation link
+        afterward.
+      </p>
+      <p *ngIf="roundInviteError" class="notice" role="alert">{{ roundInviteError }}</p>
+      <div class="process-actions">
+        <button
+          type="button"
+          class="secondary"
+          autofocus
+          (click)="roundInviteDialog.close()"
+          [disabled]="busy"
+        >
+          Cancel</button
+        ><button type="submit" [disabled]="busy">
+          {{ busy ? 'Creating invitation...' : 'Confirm invitation' }}
+        </button>
+      </div>
+    </form>
+  </dialog>
+  <p *ngIf="error" class="notice" role="alert">{{ error }}</p>
+  <p *ngIf="notice" class="review-success" role="status">{{ notice }}</p>
+  <section class="panel">
+    <div class="process-heading">
+      <div>
+        <h2>Hiring processes</h2>
+        <p class="help">
+          Optional AI preliminary interview, then one or more assessments. You control skips and
+          progression.
+        </p>
+      </div>
+      <div class="process-actions">
+        <button class="secondary" (click)="refresh()" [disabled]="busy">Refresh</button
+        ><button (click)="showCreate = !showCreate" [disabled]="busy">Create process</button>
+      </div>
+    </div>
+    <form (ngSubmit)="searchProcesses()" class="process-selector">
+      <label
+        >Find a hiring process<input
+          type="search"
+          [(ngModel)]="processSearch"
+          name="processSearch"
+          maxlength="200"
+          placeholder="Search process title" /></label
+      ><button class="secondary" [disabled]="busy">Search</button>
+      <label
+        >Select process<select
+          [ngModel]="active?.ID || ''"
+          name="selectedProcess"
+          (ngModelChange)="chooseProcess($event)"
+          [disabled]="busy"
+        >
+          <option value="">Choose a process</option>
+          <option *ngIf="activeOutsidePage" [value]="active.ID">
+            {{ active.TITLE }} (selected)
+          </option>
+          <option *ngFor="let p of processes" [value]="p.ID">
+            {{ p.TITLE }} ({{ p.CANDIDATE_COUNT }})
+          </option>
+        </select></label
+      >
+    </form>
+    <div class="process-selector-pages">
+      <span>{{ processTotal }} matching processes</span
+      ><button
+        class="secondary"
+        (click)="searchProcesses(processPage - 1)"
+        [disabled]="busy || processPage === 0"
+      >
+        Previous</button
+      ><span>{{ processPage + 1 }} / {{ processPages }}</span
+      ><button
+        class="secondary"
+        (click)="searchProcesses(processPage + 1)"
+        [disabled]="busy || processPage >= processPages - 1"
+      >
+        Next
+      </button>
+    </div>
+    <p *ngIf="!processes.length && !processSearch.trim()" class="help">
+      Create scheduled assessments in Assessments first, then arrange them into rounds here.
+      Existing interview invitations continue to work normally.
+    </p>
+    <p *ngIf="!processes.length && processSearch.trim()" class="help">
+      No processes match this title.
+      <button
+        type="button"
+        class="secondary"
+        (click)="processSearch = ''; searchProcesses()"
+        [disabled]="busy"
+      >
+        Clear search
+      </button>
+    </p>
+    <form *ngIf="showCreate" (ngSubmit)="create()" class="process-form">
+      <h3>Configure round order</h3>
+      <label
+        >Process title<input [(ngModel)]="title" name="processTitle" maxlength="200" required
+      /></label>
+      <label class="process-check"
+        ><input type="checkbox" name="enableAi" [(ngModel)]="aiEnabled" /> Add an optional AI
+        preliminary round before Assessment 1</label
+      >
+      <div *ngIf="aiEnabled" class="process-card">
+        <div class="process-grid">
+          <label
+            >Interview focus (optional)<textarea
+              [(ngModel)]="aiFocus"
+              name="aiFocus"
+              maxlength="1500"
+              rows="3"
+              placeholder="For example: Java, Spring Boot, React, troubleshooting and API design"
+            ></textarea>
+          </label>
+          <label
+            >AI round duration (minutes)<input
+              type="number"
+              [(ngModel)]="aiMinutes"
+              name="aiMinutes"
+              min="5"
+              max="30"
+              required
+          /></label>
+        </div>
+        <p class="help">
+          No approval is required. Opening questions cover practical implementation, troubleshooting
+          and design trade-offs for Assessment 1's role, with AI follow-ups. Your focus narrows the
+          discussion. Assessment 1's assigned reviewer reviews responses after completion.
+        </p>
+        <p *ngIf="!aiAvailable" class="notice">
+          AI is unavailable. For a demonstration on this computer, the connected template author can
+          enable Local interview demo in their AI connection settings. Alternatively configure the
+          backend API service. Candidates cannot start while AI is unavailable; you can skip the
+          round.
+        </p>
+      </div>
+      <div
+        *ngFor="let round of assessmentIds; let i = index; trackBy: trackIndex"
+        class="process-round-picker"
+      >
+        <label
+          >Assessment {{ i + 1
+          }}<select [(ngModel)]="assessmentIds[i]" [name]="'assessment-' + i" required>
+            <option value="">Choose a scheduled assessment</option>
+            <option *ngFor="let j of interviews" [value]="j.id">
+              {{ j.title }} &middot; {{ j.scheduledAt | date: 'short' }}
+            </option>
+          </select></label
+        ><button
+          *ngIf="assessmentIds.length > 1"
+          type="button"
+          class="secondary"
+          (click)="assessmentIds.splice(i, 1)"
+        >
+          Remove
+        </button>
+      </div>
+      <p class="help">
+        Each assessment needs a distinct interview. Use scheduled-start order. Plans are frozen when
+        the process is created; existing candidates are not silently changed by later template
+        edits.
+      </p>
+      <div class="process-actions">
+        <p class="help" role="status">
+          Round plan:
+          <strong
+            >{{ aiEnabled ? 'AI preliminary interview, then ' : 'Assessment only: '
+            }}{{ assessmentIds.length }}
+            {{ assessmentIds.length === 1 ? 'assessment' : 'assessments' }}</strong
+          >
+        </p>
+        <button
+          type="button"
+          class="secondary"
+          (click)="assessmentIds.push('')"
+          [disabled]="assessmentIds.length >= 5 || busy"
+        >
+          Add assessment round</button
+        ><button [disabled]="busy || !interviews.length">
+          Create {{ aiEnabled ? 'process with AI preliminary' : 'assessment-only process' }}
+        </button>
+      </div>
+    </form>
+  </section>
+  <ng-container *ngIf="active">
+    <section class="panel">
+      <div class="process-heading">
+        <div>
+          <span class="eyebrow">SELECTED HIRING PROCESS</span>
+          <h2>{{ active.TITLE }}</h2>
+          <p class="help">
+            {{ rounds.length }} {{ rounds.length === 1 ? 'round' : 'rounds' }} &middot;
+            {{
+              hasAi()
+                ? active.SKIP_AI_DEFAULT
+                  ? 'AI configured; new invitations bypass AI'
+                  : 'AI included for new invitations'
+                : 'Assessment only'
+            }}
+          </p>
+        </div>
+        <div class="process-actions">
+          <button
+            class="secondary"
+            (click)="detailsVisible = !detailsVisible"
+            [attr.aria-expanded]="detailsVisible"
+          >
+            {{ detailsVisible ? 'Hide process details' : 'View process details' }}</button
+          ><button (click)="openInvites()" [disabled]="busy">Invite candidates</button>
+        </div>
+      </div>
+      <div *ngIf="!hasAi()" class="process-guidance">
+        This process has no AI preliminary round. Candidates will see the assessment only. To
+        demonstrate AI, create a new process and select
+        <strong>Add an optional AI preliminary round</strong>. Existing invitations keep their
+        original round plan.
+        <div class="process-actions">
+          <button class="secondary" (click)="prepareAiCopy()" [disabled]="busy">
+            Create AI-enabled copy
+          </button>
+        </div>
+      </div>
+      <div *ngIf="detailsVisible" class="process-details">
+        <p class="help">
+          Created {{ active.CREATED_AT | date: 'medium' }}. Each round has its own timer. The
+          recruiter invites the next assessment after published feedback or an AI skip.
+        </p>
+        <ol class="process-rounds">
+          <li *ngFor="let r of rounds">
+            <span class="eyebrow"
+              >Round {{ r.POSITION + 1 }} &middot;
+              {{ r.KIND === 'AI_PRELIMINARY' ? 'AI interview' : 'Assessment' }}</span
+            >
+            <strong>{{ r.KIND === 'AI_PRELIMINARY' ? 'AI preliminary' : r.TITLE }}</strong
+            ><small>{{ r.DURATION_MINUTES }} minutes</small
+            ><small>Reviewer: {{ r.REVIEWER_NAME || 'Not assigned' }}</small
+            ><small *ngIf="r.SCHEDULED_AT">Scheduled {{ r.SCHEDULED_AT | date: 'medium' }}</small
+            ><small *ngIf="r.PLAN_VERSION">Plan: {{ r.PLAN_VERSION }}</small
+            ><button
+              *ngIf="r.INTERVIEW_ID"
+              class="secondary"
+              (click)="openInterview.emit(r.INTERVIEW_ID)"
+            >
+              Open assessment
+            </button>
+          </li>
+        </ol>
+        <details>
+          <summary>Process reference</summary>
+          <p class="process-reference">{{ active.ID }}</p>
+        </details>
+      </div>
+      <details *ngIf="hasAi()" class="process-settings">
+        <summary>Process settings</summary>
+        <div class="process-heading">
+          <p class="help">
+            AI for future invitations:
+            <strong>{{ active.SKIP_AI_DEFAULT ? 'Skipped' : 'Included' }}</strong>
+          </p>
+          <div class="process-actions">
+            <button class="secondary" (click)="policy()" [disabled]="busy">
+              {{
+                active.SKIP_AI_DEFAULT
+                  ? 'Include AI for future invitations'
+                  : 'Skip AI for future invitations'
+              }}</button
+            ><button class="secondary" (click)="beginSkip()" [disabled]="busy">
+              Skip AI for all invited candidates
+            </button>
+          </div>
+        </div>
+      </details>
+    </section>
+    <section *ngIf="showInvite" class="panel">
+      <h3>Invite candidates</h3>
+      <div class="process-actions" role="group" aria-label="Invitation method">
+        <button
+          type="button"
+          [class.secondary]="inviteMode !== 'pool'"
+          [attr.aria-pressed]="inviteMode === 'pool'"
+          (click)="inviteMode = 'pool'"
+        >
+          Select from pool</button
+        ><button
+          type="button"
+          [class.secondary]="inviteMode !== 'new'"
+          [attr.aria-pressed]="inviteMode === 'new'"
+          (click)="inviteMode = 'new'"
+        >
+          Add &amp; invite
+        </button>
+      </div>
+      <div *ngIf="inviteMode === 'new'" class="process-grid">
+        <label>Candidate name<input [(ngModel)]="newName" maxlength="120" required /></label>
+        <label
+          >Candidate email<input type="email" [(ngModel)]="newEmail" maxlength="254" required
+        /></label>
+        <label
+          >Skills (optional)<input
+            [(ngModel)]="newSkills"
+            maxlength="500"
+            placeholder="Java, React, SQL"
+        /></label>
+        <label
+          >Experience in years (optional)<input
+            type="number"
+            [(ngModel)]="newExperience"
+            min="0"
+            max="60"
+            step="0.1"
+            placeholder="Not provided"
+        /></label>
+      </div>
+      <p *ngIf="inviteMode === 'new'" class="help">
+        New candidates are saved to your pool. Existing email addresses reuse the saved profile
+        without changing its details. Missing skills and experience remain Not provided.
+      </p>
+      <ng-container *ngIf="inviteMode === 'pool'">
+        <p class="help">
+          Select up to 200 across pages. Existing process candidates are kept without duplicate
+          invitations. Process links are shared manually.
+        </p>
+        <form (ngSubmit)="findPool()" class="process-actions">
+          <input
+            name="poolSearch"
+            [(ngModel)]="poolSearch"
+            placeholder="Search candidate name or email"
+            maxlength="200"
+          /><button class="secondary" [disabled]="busy">Search</button>
+        </form>
+        <div class="process-pool">
+          <label *ngFor="let c of pool" class="process-check"
+            ><input
+              type="checkbox"
+              [checked]="selected.has(c.id)"
+              (change)="toggle(c.id)"
+              [disabled]="busy"
+            /><span
+              >{{ c.name }}<small>{{ c.email }}</small></span
+            ></label
+          >
+        </div>
+        <div class="process-actions">
+          <button
+            class="secondary"
+            (click)="findPool(poolPage - 1)"
+            [disabled]="busy || poolPage === 0"
+          >
+            Previous</button
+          ><span>{{ poolPage + 1 }} / {{ poolPages }}</span
+          ><button
+            class="secondary"
+            (click)="findPool(poolPage + 1)"
+            [disabled]="busy || poolPage >= poolPages - 1"
+          >
+            Next</button
+          ><span>{{ selected.size }} selected</span>
+        </div>
+      </ng-container>
+      <label
+        >Process invitation expiry (local time)<input
+          type="datetime-local"
+          [(ngModel)]="expiry"
+          required
+      /></label>
+      <p class="help">
+        Allow enough time for all scheduled assessment rounds. Each round has its own timer; the AI
+        timer starts only when the candidate consents and starts.
+      </p>
+      <div class="process-actions">
+        <button class="secondary" (click)="showInvite = false" [disabled]="busy">Cancel</button
+        ><button
+          *ngIf="inviteMode === 'pool'"
+          (click)="invite()"
+          [disabled]="busy || !selected.size || !expiry"
+        >
+          Create {{ selected.size }} process invitations
+        </button>
+        <button
+          *ngIf="inviteMode === 'new'"
+          (click)="addInvite()"
+          [disabled]="busy || !newName.trim() || !newEmail.trim() || !expiry"
+        >
+          Add &amp; invite
+        </button>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="process-heading">
+        <h3>Candidates and round progress</h3>
+        <span>{{ total }} invited</span>
+      </div>
+      <form (ngSubmit)="filter()" class="process-actions">
+        <input
+          [(ngModel)]="search"
+          name="candidateSearch"
+          type="search"
+          maxlength="200"
+          placeholder="Name or email"
+        /><button class="secondary" [disabled]="busy">Search</button>
+      </form>
+      <div class="candidate-table-wrap">
+        <table class="process-candidate-table">
+          <thead>
+            <tr>
+              <th scope="col">Candidate</th>
+              <th scope="col">Assessment stage</th>
+              <th scope="col">Status</th>
+              <th scope="col">Recommendation</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <ng-container *ngFor="let c of candidates"
+              ><tr>
+                <td>
+                  <strong>{{ c.CANDIDATE_NAME }}</strong
+                  ><small>{{ c.CANDIDATE_EMAIL }}</small>
+                </td>
+                <td>
+                  {{
+                    currentRound(c)?.KIND === 'AI_PRELIMINARY'
+                      ? 'AI preliminary'
+                      : currentRound(c)?.TITLE
+                  }}<small>Round {{ stageNumber(c) }} of {{ c.steps.length }}</small>
+                </td>
+                <td>
+                  <span class="process-state">{{
+                    c.CLOSED
+                      ? 'Ended'
+                      : c.ON_HOLD
+                        ? 'Paused'
+                        : canAdvance(c)
+                          ? 'Ready for invitation'
+                          : label(currentRound(c)?.STATE)
+                  }}</span>
+                </td>
+                <td>
+                  {{
+                    stageRecommendation(c)
+                      ? recommendationLabel(stageRecommendation(c))
+                      : 'Pending review'
+                  }}
+                </td>
+                <td>
+                  <div class="table-actions">
+                    <button
+                      *ngIf="canAdvance(c)"
+                      (click)="beginRoundInvite(c, roundInviteDialog)"
+                      [disabled]="busy"
+                    >
+                      Invite to this round</button
+                    ><button
+                      class="secondary"
+                      (click)="share(c)"
+                      [attr.aria-expanded]="shareCandidate === c.ID"
+                      [disabled]="busy"
+                    >
+                      {{ shareCandidate === c.ID ? 'Hide invitation' : 'Share invitation' }}</button
+                    ><button
+                      class="secondary"
+                      (click)="expandedCandidate = expandedCandidate === c.ID ? '' : c.ID"
+                      [attr.aria-expanded]="expandedCandidate === c.ID"
+                    >
+                      {{ expandedCandidate === c.ID ? 'Hide details' : 'Details & actions' }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr
+                *ngIf="shareCandidate === c.ID || expandedCandidate === c.ID"
+                class="candidate-detail-row"
+              >
+                <td colspan="5">
+                  <div class="process-link" *ngIf="shareCandidate === c.ID">
+                    <label [for]="'process-link-' + c.ID"
+                      >Candidate invitation link
+                      <small
+                        >Opens this candidate's complete journey, including AI when
+                        configured.</small
+                      ></label
+                    >
+                    <div class="process-link-actions" *ngIf="copiedLinks[c.ID]">
+                      <input
+                        [id]="'process-link-' + c.ID"
+                        readonly
+                        [value]="copiedLinks[c.ID]"
+                        (focus)="$any($event.target).select()"
+                        aria-label="Private process invitation link"
+                      />
+                      <button class="secondary" (click)="copy(c)" [disabled]="busy">
+                        Copy link
+                      </button>
+                      <a
+                        class="process-open"
+                        [href]="copiedLinks[c.ID]"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        >Open candidate journey &#8599;</a
+                      >
+                    </div>
+                    <p *ngIf="linkErrors[c.ID]" role="status">
+                      {{ linkErrors[c.ID] }}
+                      <button class="secondary" (click)="showLink(c)">Show link</button>
+                    </p>
+                    <small
+                      >Expires {{ c.EXPIRES_AT | date: 'medium' }}. Share privately. Use this link
+                      rather than the standalone assessment sign-in.</small
+                    >
+                  </div>
+                  <div *ngIf="expandedCandidate === c.ID">
+                    <ol class="process-steps">
+                      <li *ngFor="let s of c.steps; let roundIndex = index">
+                        <small>Round {{ roundIndex + 1 }} of {{ c.steps.length }}</small>
+                        <div>
+                          <strong>{{
+                            s.KIND === 'AI_PRELIMINARY' ? 'AI preliminary' : s.TITLE
+                          }}</strong
+                          ><small>{{ stepLabel(c, s) }}</small
+                          ><small *ngIf="s.STATE === 'FEEDBACK_PUBLISHED' && s.RECOMMENDATION"
+                            >Human recommendation:
+                            {{ recommendationLabel(s.RECOMMENDATION) }}</small
+                          >
+                          <details *ngIf="s.SKIP_REASON">
+                            <summary>Skip record</summary>
+                            <p>{{ s.SKIP_REASON }}</p>
+                            <small>{{ s.SKIPPED_AT | date: 'medium' }}</small>
+                          </details>
+                        </div>
+                      </li>
+                    </ol>
+                    <div class="process-actions">
+                      <button
+                        *ngIf="canAdvance(c)"
+                        (click)="beginRoundInvite(c, roundInviteDialog)"
+                        [disabled]="busy"
+                      >
+                        Invite to this round</button
+                      ><button
+                        *ngIf="hasAi(c)"
+                        class="secondary"
+                        (click)="beginSkip(c)"
+                        [disabled]="busy"
+                      >
+                        {{
+                          aiState(c) === 'SUBMITTED' ? 'Waive review & continue' : 'Skip AI round'
+                        }}
+                      </button>
+                      <button
+                        *ngIf="aiState(c) === 'FEEDBACK_PUBLISHED'"
+                        class="secondary"
+                        (click)="viewAiFeedback(c)"
+                        [disabled]="busy"
+                      >
+                        {{ feedback[c.ID] ? 'Hide feedback' : 'View feedback' }}
+                      </button>
+                      <details *ngIf="!c.CLOSED" class="process-more">
+                        <summary>More actions</summary>
+                        <button
+                          *ngIf="!c.CLOSED"
+                          class="secondary"
+                          (click)="action(c, c.ON_HOLD ? 'RESUME' : 'HOLD')"
+                          [disabled]="busy"
+                        >
+                          {{ c.ON_HOLD ? 'Resume progression' : 'Pause new rounds' }}
+                        </button>
+                        <details *ngIf="!c.CLOSED">
+                          <summary>End process</summary>
+                          <p>
+                            Stops new progression. Existing assessment invitations are not revoked.
+                          </p>
+                          <button class="secondary" (click)="action(c, 'END')" [disabled]="busy">
+                            Confirm end process
+                          </button>
+                        </details>
+                      </details>
+                    </div>
+                    <section
+                      *ngIf="feedback[c.ID] as f"
+                      class="process-guidance"
+                      aria-label="Published AI feedback"
+                    >
+                      <strong>Published AI interview feedback</strong>
+                      <p>
+                        {{ recommendationLabel(f.RECOMMENDATION) }} &middot; Reviewed by
+                        {{ f.REVIEWER_NAME || 'Reviewer name unavailable' }} &middot;
+                        {{ f.PUBLISHED_AT | date: 'medium' }}
+                      </p>
+                      <p>{{ f.REVIEW_NOTES || 'No additional feedback notes.' }}</p>
+                    </section>
+                  </div>
+                </td>
+              </tr></ng-container
+            >
+          </tbody>
+        </table>
+      </div>
+      <p *ngIf="!candidates.length" class="help">
+        No matching candidates. Invite candidates from your pool or change the search.
+      </p>
+      <div class="process-actions">
+        <button class="secondary" (click)="changePage(page - 1)" [disabled]="busy || page === 0">
+          Previous</button
+        ><span>{{ page + 1 }} / {{ pages }}</span
+        ><button
+          class="secondary"
+          (click)="changePage(page + 1)"
+          [disabled]="busy || page >= pages - 1"
+        >
+          Next
+        </button>
+      </div>
+    </section>
+  </ng-container>
+  <section
+    *ngIf="skipTarget"
+    class="panel process-skip"
+    role="region"
+    aria-label="Confirm AI round skip"
+  >
+    <h3>{{ skipTarget.waive ? 'Waive AI review for ' : 'Skip AI for ' }}{{ skipTarget.name }}?</h3>
+    <p>
+      Stops this AI round, including one already in progress. Existing conversation, answers and
+      records are retained. Published evaluations are never skipped. Waiving review bypasses scoring
+      of submitted answers. The next assessment becomes ready for you to invite.
+    </p>
+    <label
+      >Reason<input [(ngModel)]="skipReason" maxlength="1000" [disabled]="busy" required /></label
+    ><label *ngIf="!skipTarget.id" class="process-check"
+      ><input type="checkbox" [(ngModel)]="includeFuture" [disabled]="busy" /> Also skip AI for
+      future invitations to this process</label
+    >
+    <div class="process-actions">
+      <button class="secondary" (click)="skipTarget = undefined" [disabled]="busy">Cancel</button
+      ><button (click)="skip()" [disabled]="busy || !skipReason.trim()">
+        {{ skipTarget.waive ? 'Confirm review waiver' : 'Confirm skip' }}
+      </button>
+    </div>
+  </section>
+</div>

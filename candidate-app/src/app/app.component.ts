@@ -1,3 +1,5 @@
+import { AiRoundReviewComponent } from './ai-round-review.component';
+import { ProcessCandidateComponent } from './process-candidate.component';
 import { TemplateAuthorComponent } from './template-author.component';
 import { StaffComponent } from './staff.component';
 import { Component, OnDestroy, OnInit, AfterViewInit, ViewChild, ElementRef } from '@angular/core';
@@ -22,7 +24,14 @@ type Session = {
   submissionReason?: string;
   templateVersion?: string;
 };
+type FlowContext = {
+  source: string;
+  processTitle?: string;
+  roundNumber?: number;
+  totalRounds?: number;
+};
 type ReviewSummary = {
+  flow?: FlowContext;
   sessionId: string;
   submittedAt: number;
   startedAt: number | null;
@@ -61,6 +70,7 @@ type EvidenceSummary = {
   expiresAt: number;
 };
 type ReviewDetail = {
+  flow?: FlowContext;
   sessionId: string;
   state: string;
   submittedAt: number;
@@ -81,6 +91,8 @@ type ReviewDetail = {
   selector: 'exl-root',
   standalone: true,
   imports: [
+    AiRoundReviewComponent,
+    ProcessCandidateComponent,
     CommonModule,
     FormsModule,
     TemplateAuthorComponent,
@@ -93,10 +105,12 @@ type ReviewDetail = {
   templateUrl: './app.component.html',
 })
 export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
+  processCode = '';
+  roundReviewsOpened = false;
   private api = 'http://127.0.0.1:8080/api';
   reviewerCanAuthor = false;
   authorWorkspaceOpened = false;
-  reviewerWorkspace: 'candidates' | 'templates' | 'authoring' = 'candidates';
+  reviewerWorkspace: 'candidates' | 'templates' | 'authoring' | 'rounds' = 'candidates';
   templateWorkspaceOpened = false;
   reviewFilters: ReviewFilters = {
     search: '',
@@ -137,6 +151,7 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
   invitationFromLink = false;
   @ViewChild('signInDialog') private signInDialog?: ElementRef<HTMLDialogElement>;
   assignedInterview?: {
+    flow?: FlowContext;
     title: string;
     candidateName: string;
     scheduledAt: number;
@@ -221,6 +236,17 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
   camera?: MediaStream;
   microphone?: MediaStream;
   screen?: MediaStream;
+  flowLabel(flow?: FlowContext): string {
+    if (!flow || flow.source === 'LEGACY') return 'Legacy assessment - source not recorded';
+    return flow.source === 'HIRING_PROCESS'
+      ? 'Hiring process: ' +
+          flow.processTitle +
+          ' ? Round ' +
+          flow.roundNumber +
+          ' of ' +
+          flow.totalRounds
+      : 'Standalone assessment';
+  }
   get allPassed() {
     return this.checks.filter((c) => c.key !== 'desktop').every((c) => c.status === 'passed');
   }
@@ -345,6 +371,11 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
     );
   }
   ngOnInit() {
+    const processHash = window.location?.hash || '';
+    if (processHash.startsWith('#process=')) {
+      this.processCode = new URLSearchParams(processHash.slice(1)).get('process') || '';
+      return;
+    }
     this.readInvitationLink();
     if (this.token && !this.invitationFromLink) void this.loadAssignedInvitation();
     void this.restoreStaffWorkspace();
@@ -617,11 +648,12 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
     if (stage === 'candidates') this.backToCandidates();
     else this.setReviewTab(stage === 'feedback' ? 'feedback' : 'overview');
   }
-  showReviewerWorkspace(workspace: 'candidates' | 'templates' | 'authoring') {
+  showReviewerWorkspace(workspace: 'candidates' | 'templates' | 'authoring' | 'rounds') {
     if (workspace === 'authoring' && !this.reviewerCanAuthor) return;
     this.reviewerWorkspace = workspace;
     if (workspace === 'authoring') this.authorWorkspaceOpened = true;
     if (workspace === 'templates') this.templateWorkspaceOpened = true;
+    if (workspace === 'rounds') this.roundReviewsOpened = true;
   }
   backToCandidates() {
     this.reviewerWorkspace = 'candidates';
@@ -1107,6 +1139,7 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
     this.step = 'assessment';
     if (this.completed) {
       this.releaseMedia();
+      void this.exitSubmittedFullscreen();
       try {
         sessionStorage.removeItem(this.progressKey);
       } catch {}
@@ -1120,6 +1153,19 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
   }
   private get progressKey() {
     return `assessmentProgress:${this.sessionId}`;
+  }
+  private async exitSubmittedFullscreen(): Promise<void> {
+    if (
+      !this.completed ||
+      !document.fullscreenElement ||
+      typeof document.exitFullscreen !== 'function'
+    )
+      return;
+    try {
+      await document.exitFullscreen();
+    } catch {
+      // Submission remains confirmed even if the browser cannot leave fullscreen.
+    }
   }
   trackQuestionGroup(_index: number, group: { label: string }) {
     return group.label;

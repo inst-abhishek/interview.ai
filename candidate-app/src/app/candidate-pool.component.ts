@@ -220,6 +220,9 @@ export class CandidatePoolComponent implements OnInit {
     }
     this.invalidatePreview();
   }
+  get allOnPageSelected() {
+    return this.candidates.length > 0 && this.candidates.every((c) => this.selected.has(c.id));
+  }
   selectPage() {
     const all = this.candidates.every((c) => this.selected.has(c.id));
     for (const c of this.candidates) {

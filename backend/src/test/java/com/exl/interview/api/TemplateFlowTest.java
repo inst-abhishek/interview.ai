@@ -91,6 +91,7 @@ class TemplateFlowTest {
             "sessions",
             "invitations",
             "interviews",
+            "candidate_pool",
             "recruiters",
             "tokens"
         ))

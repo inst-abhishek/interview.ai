@@ -1,0 +1,115 @@
+:host {
+  display: block;
+}
+:host[hidden] {
+  display: none !important;
+}
+.round-review-heading,
+.round-review-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.round-review-actions {
+  margin: 18px 0;
+}
+.round-review-list {
+  display: grid;
+  gap: 10px;
+  max-height: 620px;
+  overflow: auto;
+}
+.round-review-list button {
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-radius: 10px;
+}
+.round-review-layout {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 24px;
+}
+.round-review-layout nav {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+.round-review-layout button.active {
+  border-color: #ff995e;
+  background: #173856;
+}
+.round-review-conversation {
+  max-height: 460px;
+  overflow: auto;
+  display: grid;
+  gap: 14px;
+}
+.round-review-conversation article,
+.round-review-criterion,
+.round-review-draft {
+  padding: 18px;
+  border: 1px solid #365777;
+  border-radius: 10px;
+  background: #102c49;
+  margin: 12px 0;
+}
+.round-review-conversation p,
+.round-review-draft p {
+  white-space: pre-wrap;
+}
+.round-review-final {
+  border-top: 1px solid #365777;
+  margin-top: 26px;
+  padding-top: 20px;
+}
+label {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  margin: 16px 0;
+}
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 12px;
+  background: #071c33;
+  color: #eff6ff;
+  border: 1px solid #466785;
+  border-radius: 8px;
+  font: inherit;
+}
+.round-review-criterion input {
+  max-width: 150px;
+}
+p {
+  line-height: 1.7;
+}
+small {
+  color: #bad1e5;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #ff995e;
+  outline-offset: 3px;
+}
+@media (max-width: 750px) {
+  .round-review-layout {
+    grid-template-columns: 1fr;
+  }
+  .round-review-layout nav {
+    display: flex;
+    overflow: auto;
+  }
+  .round-review-list button {
+    flex-wrap: wrap;
+  }
+}

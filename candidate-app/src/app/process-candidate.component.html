@@ -1,0 +1,318 @@
+<header class="journey-header">
+  <div class="brand">EXL <small>Go Beyond.</small></div>
+  <strong>Candidate interview journey</strong><a href="/">Candidate portal</a>
+</header>
+<main class="journey-main" (document:click)="closeConnectionPopover()">
+  <p *ngIf="error" class="notice" role="alert">{{ error }}</p>
+  <p *ngIf="!journey" class="help">
+    Loading your invitation. If it expired, contact your recruiter.
+  </p>
+  <ng-container *ngIf="journey as j">
+    <section class="panel">
+      <div class="journey-heading">
+        <div>
+          <span class="eyebrow">HIRING PROCESS</span>
+          <h1>{{ j.title }}</h1>
+          <p>Welcome, {{ j.name }}.</p>
+        </div>
+        <div class="interviewer-tools">
+          <button class="secondary" (click)="refresh()">Refresh status</button>
+        </div>
+      </div>
+
+      <dialog #managerDialog class="connection-dialog" aria-labelledby="ai-manager-title">
+        <div class="journey-heading">
+          <h2 id="ai-manager-title">AI connection</h2>
+          <button type="button" class="secondary" (click)="managerDialog.close()">Close</button>
+        </div>
+        <ng-container *ngIf="j.connectionManagerEnabled">
+          <p>Use your ChatGPT subscription for this local interview demo.</p>
+          <p *ngIf="managerError" class="notice" role="alert">{{ managerError }}</p>
+          <p *ngIf="managerNotice" role="status">{{ managerNotice }}</p>
+          <p>
+            <strong>{{ connectionLabel }}</strong
+            ><br />{{ managerAccount }}
+          </p>
+          <label *ngIf="managerConnected" class="demo-connection-form"
+            >Model<select
+              [(ngModel)]="managerModel"
+              (ngModelChange)="manage('enable')"
+              [disabled]="managerBusy"
+            >
+              <option *ngFor="let m of managerModels" [value]="m.slug">{{ m.displayName }}</option>
+            </select></label
+          >
+          <div class="interviewer-tools">
+            <button
+              type="button"
+              class="secondary"
+              (click)="manage('connect')"
+              [disabled]="managerBusy"
+            >
+              {{ managerConnected ? 'Reconnect ChatGPT' : 'Connect ChatGPT' }}
+            </button>
+            <button
+              *ngIf="managerUrl"
+              type="button"
+              class="secondary"
+              (click)="continueWithChatGpt()"
+            >
+              Continue with ChatGPT &#8599;
+            </button>
+            <a
+              *ngIf="managerPopupBlocked && managerUrl"
+              class="manage-connection"
+              [href]="managerUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Open ChatGPT sign-in link &#8599;</a
+            >
+            <button
+              type="button"
+              class="secondary"
+              (click)="manage('refresh')"
+              [disabled]="managerBusy"
+            >
+              Refresh connection
+            </button>
+
+            <button
+              *ngIf="managerConnected"
+              type="button"
+              class="secondary"
+              (click)="manage('disconnect')"
+              [disabled]="managerBusy"
+            >
+              Disconnect ChatGPT
+            </button>
+          </div>
+          <small
+            >Uses your ChatGPT allowance. No paid API fallback while selected. Backend restart
+            requires enabling the demo again.</small
+          >
+        </ng-container>
+      </dialog>
+      <ol class="journey-rounds">
+        <li *ngFor="let r of j.rounds">
+          <strong>{{ r.kind === 'AI_PRELIMINARY' ? 'AI preliminary interview' : r.title }}</strong
+          ><small>{{ label(r.state) }}</small>
+          <div *ngIf="r.kind === 'ASSESSMENT' && r.submissionReference" class="journey-receipt">
+            <strong>Submitted successfully</strong>
+            <small *ngIf="r.submittedAt">Submitted {{ r.submittedAt | date: 'medium' }}</small>
+            <small>Submission reference</small><code>{{ r.submissionReference }}</code>
+          </div>
+          <a
+            *ngIf="
+              r.assessmentUrl &&
+              active &&
+              r.state !== 'SUBMITTED' &&
+              r.state !== 'FEEDBACK_PUBLISHED'
+            "
+            [href]="r.assessmentUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Open assessment</a
+          >
+        </li>
+      </ol>
+      <p class="help">
+        Each round has a separate timer and submission. Your recruiter controls invitations to later
+        rounds. Published staff feedback is not shown here.
+      </p>
+      <p *ngIf="!aiRound" class="help" role="status">
+        Your recruiter configured this invitation for assessment rounds only. No AI preliminary
+        interview is included in this process. Contact your recruiter if you expected an AI
+        interview.
+      </p>
+    </section>
+    <p *ngIf="completed" class="review-success" role="status">
+      All rounds complete. Your recruiter will contact you.
+    </p>
+    <p *ngIf="j.closed" class="notice" role="status">
+      Your recruiter has ended progression in this process. Contact them for updates.
+    </p>
+    <p *ngIf="j.onHold && !j.closed" class="notice" role="status">
+      New progression is paused. Saved answers are retained. Contact your recruiter.
+    </p>
+    <ng-container *ngIf="aiRound as r"
+      ><section *ngIf="r.state === 'READY' || r.state === 'IN_PROGRESS'" class="panel">
+        <div class="journey-heading">
+          <div>
+            <h2>AI technical preliminary round</h2>
+            <p class="help">
+              Text conversation. A human reviewer evaluates the responses; AI does not decide
+              progression.
+            </p>
+          </div>
+          <div class="interviewer-tools">
+            <div
+              *ngIf="aiConnectionVisible"
+              class="connection-anchor"
+              (click)="$event.stopPropagation()"
+              (keydown.escape)="
+                connectionPanelOpen = false; connectionTrigger.focus(); $event.stopPropagation()
+              "
+            >
+              <button
+                #connectionTrigger
+                type="button"
+                class="secondary interviewer-status"
+                [class.attention]="
+                  interviewerRequestFailed ||
+                  !j.aiAvailable ||
+                  !active ||
+                  (j.connectionManagerEnabled &&
+                    (!managerChecked ||
+                      managerCheckFailed ||
+                      !managerConnected ||
+                      !managerDemoEnabled))
+                "
+                (click)="connectionPanelOpen = !connectionPanelOpen"
+                [attr.aria-expanded]="connectionPanelOpen"
+                aria-controls="interviewer-connection"
+              >
+                <span aria-hidden="true" class="connection-dot"></span>{{ interviewerLabel }}
+                <span aria-hidden="true">&#9432;</span>
+              </button>
+              <section
+                *ngIf="aiRound && connectionPanelOpen"
+                id="interviewer-connection"
+                class="interviewer-connection connection-popover"
+                aria-label="AI connection"
+              >
+                <h3>AI connection</h3>
+                <p>
+                  <strong>{{ interviewerLabel }}</strong>
+                </p>
+                <small *ngIf="interviewerRequestFailed"
+                  >Last question request failed. Your answer is saved.</small
+                >
+                <button
+                  *ngIf="j.connectionManagerEnabled"
+                  type="button"
+                  class="secondary"
+                  (click)="
+                    connectionPanelOpen = false; managerDialog.showModal(); manage('refresh')
+                  "
+                >
+                  Manage connection
+                </button>
+                <small *ngIf="!j.connectionManagerEnabled">Managed by your recruiter.</small>
+              </section>
+            </div>
+            <strong *ngIf="r.state === 'IN_PROGRESS'">{{ timeLabel }} remaining</strong>
+          </div>
+        </div>
+        <ng-container *ngIf="r.state === 'READY' && active"
+          ><p>
+            This round uses role-focused opening questions and at most one AI-generated
+            clarification per topic. Your answers are saved on the server and shared with the
+            assigned reviewer. Technical responses are sent to the configured AI service to prepare
+            follow-ups. Do not include confidential or unnecessary personal information.
+          </p>
+          <p>
+            The timer starts when you choose Start. It continues during connection problems. At
+            expiry the round closes; saved drafts remain available to the reviewer. You can ask your
+            recruiter to skip this round at any time.
+          </p>
+          <label class="journey-check"
+            ><input type="checkbox" [(ngModel)]="consent" /> I understand this is an AI-led round
+            and consent to processing and retention of this text conversation for review.</label
+          >
+          <p *ngIf="!j.aiAvailable" class="notice">
+            The AI interviewer is unavailable. Contact your recruiter for help or to skip the round.
+          </p>
+          <button (click)="start()" [disabled]="busy || !consent || !j.aiAvailable">
+            Start AI round
+          </button></ng-container
+        >
+        <ng-container *ngIf="r.state === 'IN_PROGRESS' && active">
+          <article *ngIf="lastTurn?.role === 'INTERVIEWER'" class="journey-question">
+            <span class="eyebrow">{{
+              lastTurn?.followUp ? 'FOLLOW-UP' : 'APPROVED QUESTION'
+            }}</span>
+            <p>{{ lastTurn?.text }}</p>
+            <button type="button" class="secondary" (click)="repeatVisible = !repeatVisible">
+              {{ repeatVisible ? 'Hide repeated question' : 'Repeat question' }}
+            </button>
+            <p *ngIf="repeatVisible" role="status">{{ lastTurn?.text }}</p>
+          </article>
+          <div *ngIf="busy" class="journey-progress" role="status">
+            <span class="journey-spinner" aria-hidden="true"></span> Saving your response or
+            preparing the next question. The timer continues.
+          </div>
+          <div *ngIf="answering">
+            <label
+              >Your answer<textarea
+                [(ngModel)]="answer"
+                (ngModelChange)="changed()"
+                rows="7"
+                maxlength="5000"
+                [disabled]="busy || remaining === 0"
+              ></textarea>
+            </label>
+            <div class="journey-heading">
+              <small role="status">{{
+                saving ? 'Saving draft...' : status || 'Drafts autosave every five seconds'
+              }}</small
+              ><button
+                (click)="send()"
+                [disabled]="busy || saving || !answer.trim() || remaining === 0"
+              >
+                Send answer
+              </button>
+            </div>
+          </div>
+          <div *ngIf="waitingNext && !busy">
+            <p>Your answer is saved. Continue to prepare the next question.</p>
+            <button (click)="next()">Continue / retry next question</button>
+          </div>
+          <details class="journey-end">
+            <summary>End this round early</summary>
+            <p>
+              This closes the AI round for review and cannot be undone. Saved drafts are retained.
+            </p>
+            <label class="journey-check"
+              ><input type="checkbox" [(ngModel)]="endConfirmed" /> End the round with my saved
+              responses.</label
+            ><button
+              class="secondary"
+              (click)="finish()"
+              [disabled]="busy || saving || !endConfirmed"
+            >
+              Confirm end round
+            </button>
+          </details>
+        </ng-container>
+        <details *ngIf="r.transcript?.length" class="journey-history">
+          <summary>Conversation history ({{ r.transcript?.length }} messages)</summary>
+          <article *ngFor="let t of r.transcript" [class.candidate]="t.role === 'CANDIDATE'">
+            <strong>{{ t.role === 'CANDIDATE' ? 'You' : 'AI interviewer' }}</strong>
+            <p>{{ t.text }}</p>
+            <small>{{ t.at | date: 'shortTime' }}</small>
+          </article>
+        </details>
+      </section>
+      <details
+        *ngIf="r.state !== 'READY' && r.state !== 'IN_PROGRESS' && r.state !== 'LOCKED'"
+        class="panel completed-ai-history"
+      >
+        <summary>
+          AI preliminary interview &middot; {{ label(r.state) }} &middot; View conversation
+        </summary>
+        <p class="help">
+          Saved responses are retained for human review. This round no longer needs an AI
+          connection.
+        </p>
+        <p *ngIf="!r.transcript?.length" class="help">No conversation was recorded.</p>
+        <div class="journey-history">
+          <article *ngFor="let t of r.transcript" [class.candidate]="t.role === 'CANDIDATE'">
+            <strong>{{ t.role === 'CANDIDATE' ? 'You' : 'AI interviewer' }}</strong>
+            <p>{{ t.text }}</p>
+            <small>{{ t.at | date: 'shortTime' }}</small>
+          </article>
+        </div>
+      </details></ng-container
+    >
+  </ng-container>
+</main>

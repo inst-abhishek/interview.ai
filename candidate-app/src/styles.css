@@ -2236,7 +2236,44 @@ input:focus-visible {
   color: #bfd3e5;
 }
 .review-queue-table td .review-status {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 30px;
+  padding: 4px 10px;
+  white-space: nowrap;
+}
+.review-queue-table td .review-status.reviewed {
+  color: #b9d9f4;
+  border-color: #547b9b;
+  background: #17344c;
+}
+.review-queue-table td > .review-recommendation {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 30px;
+  padding: 4px 10px;
+  border: 1px solid #547b9b;
+  border-radius: 18px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.review-queue-table td > .review-recommendation.shortlist {
+  color: #9ce9ca;
+  border-color: #34856c;
+  background: #103e34;
+}
+.review-queue-table td > .review-recommendation.hold {
+  color: #ffdaa0;
+  border-color: #997038;
+  background: #47361f;
+}
+.review-queue-table td > .review-recommendation.reject {
+  color: #ffc4c4;
+  border-color: #b65459;
+  background: #50262e;
 }
 .review-queue-table td button {
   font-size: 11px;

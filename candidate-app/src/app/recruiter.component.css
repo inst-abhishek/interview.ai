@@ -3,6 +3,49 @@
   min-height: 100vh;
   background: #06182e;
 }
+.standalone-invitation-note {
+  padding: 14px 16px;
+  margin: 14px 0;
+  border-left: 3px solid #82bee9;
+  background: #102c49;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.invitation-source {
+  min-width: 150px;
+  max-width: 230px;
+}
+.source-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border: 1px solid #557590;
+  border-radius: 6px;
+  color: #c0d7ea;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.source-badge.process-source {
+  color: #a8e7df;
+  border-color: #41877f;
+  background: #103b3b;
+}
+.invitation-reference {
+  margin-top: 7px;
+  font-size: 11px;
+  color: #aac8e0;
+}
+.invitation-reference summary {
+  cursor: pointer;
+}
+.invitation-reference code {
+  display: block;
+  overflow-wrap: anywhere;
+  margin-top: 6px;
+}
+.standalone-invitation-note p {
+  margin: 6px 0 10px;
+}
 * {
   box-sizing: border-box;
 }

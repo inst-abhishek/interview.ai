@@ -260,6 +260,10 @@ public class ChatGptConnection {
     }
 
     public synchronized String begin(String owner, String session, int port) {
+        return begin(owner, session, port, "/api/author/chatgpt");
+    }
+
+    private String begin(String owner, String session, int port, String route) {
         if (!enabled) throw fail(503, "ChatGPT connection is disabled");
         pending
             .entrySet()
@@ -273,7 +277,7 @@ public class ChatGptConnection {
         String state = secret(),
             verifier = secret(),
             nonce = secret(),
-            redirect = "http://127.0.0.1:" + port + "/api/author/chatgpt/callback";
+            redirect = "http://127.0.0.1:" + port + route + "/callback";
         var params = new LinkedHashMap<String, String>();
         params.put("client_id", c.clientId.isBlank() ? "dynamic_agent_client" : c.clientId);
         params.put("ext_agent_host_id", host());
@@ -318,6 +322,10 @@ public class ChatGptConnection {
     }
 
     public synchronized String prepareLogin(String owner, String session, int port) {
+        return prepareLogin(owner, session, port, "/api/author/chatgpt");
+    }
+
+    synchronized String prepareLogin(String owner, String session, int port, String route) {
         launches
             .entrySet()
             .removeIf(
@@ -325,10 +333,10 @@ public class ChatGptConnection {
                     e.getValue().expires() < System.currentTimeMillis() ||
                     e.getValue().owner().equals(owner)
             );
-        String url = begin(owner, session, port),
+        String url = begin(owner, session, port, route),
             ticket = secret();
         launches.put(ticket, new Launch(owner, session, url, System.currentTimeMillis() + 600000));
-        return "http://127.0.0.1:" + port + "/api/author/chatgpt/authorize?ticket=" + ticket;
+        return "http://127.0.0.1:" + port + route + "/authorize?ticket=" + ticket;
     }
 
     synchronized Launch launch(String ticket) {

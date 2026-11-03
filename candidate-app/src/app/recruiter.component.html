@@ -45,6 +45,7 @@
           <span class="eyebrow">CANDIDATE EVALUATION</span>
           <h1 id="recruiter-evaluation-title">{{ result.candidateName }}</h1>
           <p class="help">{{ result.interviewTitle }}</p>
+          <p class="help">{{ evaluationSource }}</p>
           <p class="help">{{ result.candidateEmail }}</p>
         </div>
         <span
@@ -186,24 +187,36 @@
       <section class="workspace-heading">
         <div>
           <span class="eyebrow">HIRING MANAGEMENT</span>
-          <h1>Your interview workspace</h1>
+          <h1>Recruiter workspace</h1>
           <p class="help">
             Create an assessment, share a personal invitation, and follow each candidate's progress.
           </p>
         </div>
-        <button class="secondary" type="button" (click)="reload()" [disabled]="busy">
+        <button
+          *ngIf="tab !== 'processes'"
+          class="secondary"
+          type="button"
+          (click)="reload()"
+          [disabled]="busy"
+        >
           {{ busy ? 'Loading...' : 'Refresh' }}
         </button>
       </section>
       <nav class="workspace-tabs" aria-label="Recruiter workspace">
+        <button [class.active]="tab === 'processes'" (click)="openHiringProcesses()">
+          Hiring processes
+        </button>
+        <button [class.active]="tab === 'pool'" (click)="poolInterviewId = ''; tab = 'pool'">
+          Candidates
+        </button>
         <button [class.active]="tab === 'interviews'" (click)="tab = 'interviews'">
-          Interviews <span>{{ interviews.length }}</span></button
-        ><button [class.active]="tab === 'pool'" (click)="poolInterviewId = ''; tab = 'pool'">
-          Candidate pool</button
-        ><button [class.active]="tab === 'questions'" (click)="tab = 'questions'">
-          Question bank <span>{{ questions.length }}</span></button
-        ><button [class.active]="tab === 'templates'" (click)="tab = 'templates'">
+          Assessments <span>{{ interviews.length }}</span>
+        </button>
+        <button [class.active]="tab === 'templates'" (click)="tab = 'templates'">
           Assessment templates
+        </button>
+        <button [class.active]="tab === 'questions'" (click)="tab = 'questions'">
+          Question bank <span>{{ questions.length }}</span>
         </button>
       </nav>
       <exl-template-catalogue
@@ -213,6 +226,14 @@
         [approvedOnly]="true"
         (chosen)="chooseAssessment($event)"
       ></exl-template-catalogue>
+      <exl-hiring-process
+        *ngIf="processWorkspaceOpened"
+        [hidden]="tab !== 'processes'"
+        [token]="token"
+        [interviews]="interviews"
+        (authenticationRequired)="poolAuthenticationRequired()"
+        (openInterview)="openProcessInterview($event)"
+      ></exl-hiring-process>
       <exl-candidate-pool
         *ngIf="tab === 'pool'"
         [token]="token"
@@ -306,16 +327,16 @@
       <ng-container *ngIf="tab === 'interviews'">
         <section class="panel interview-toolbar">
           <div>
-            <h2>Interviews</h2>
-            <p class="help">Each interview keeps its selected questions and duration.</p>
+            <h2>Assessments</h2>
+            <p class="help">Each assessment keeps its selected questions and duration.</p>
           </div>
           <button (click)="openInterviewForm()" [disabled]="busy">
-            {{ showInterviewForm ? 'Close form' : '+ Create interview' }}
+            {{ showInterviewForm ? 'Close form' : '+ Create assessment' }}
           </button>
         </section>
         <section *ngIf="showInterviewForm" class="panel create-interview">
-          <h2>Create an interview</h2>
-          <p class="help">Choose an approved assessment, then add the interview details.</p>
+          <h2>Create an assessment</h2>
+          <p class="help">Choose an approved assessment, then add the assessment details.</p>
           <div class="assessment-modes" role="group" aria-label="Assessment source">
             <button
               type="button"
@@ -374,7 +395,7 @@
           <form class="recruiter-form" (ngSubmit)="createInterview()">
             <div class="field-pair">
               <label
-                >Job / interview title<input
+                >Job / assessment title<input
                   name="title"
                   [(ngModel)]="title"
                   required
@@ -430,16 +451,16 @@
                   (assessmentMode === 'template' ? !chosenTemplate : !selectedQuestions.length)
                 "
               >
-                {{ busy ? 'Creating...' : 'Create interview' }}
+                {{ busy ? 'Creating...' : 'Create assessment' }}
               </button>
             </div>
           </form>
         </section>
         <div class="interview-workspace">
           <section class="panel interview-list">
-            <h2>Your interviews</h2>
+            <h2>Your assessments</h2>
             <p *ngIf="!interviews.length" class="empty-state">
-              Create your first interview to invite candidates.
+              Create your first assessment to invite candidates.
             </p>
             <button
               type="button"
@@ -459,7 +480,7 @@
           </section>
           <section *ngIf="!selected" class="panel empty-state">
             <h2>Ready for your next hire?</h2>
-            <p>Select an interview to invite candidates and track their assessments.</p>
+            <p>Select an assessment to invite candidates and track their assessments.</p>
           </section>
           <div *ngIf="selected" class="interview-details">
             <section class="panel">
@@ -480,17 +501,46 @@
             </section>
             <section class="panel">
               <div class="heading">
-                <h2>Invite a candidate</h2>
+                <h2>Invite to standalone assessment</h2>
                 <button
                   class="secondary"
                   type="button"
                   (click)="openCandidatePool()"
                   [disabled]="busy"
                 >
-                  Invite from candidate pool
+                  Select from pool
                 </button>
               </div>
+              <aside
+                *ngIf="assessmentProcessCount > 0"
+                class="standalone-invitation-note"
+                aria-label="Hiring process invitation reminder"
+              >
+                <strong
+                  >Used in {{ assessmentProcessCount }} hiring
+                  {{ assessmentProcessCount === 1 ? 'process' : 'processes' }}</strong
+                >
+                <p>
+                  To include AI and round progression, invite candidates through the hiring process.
+                </p>
+                <button type="button" class="secondary" (click)="openHiringProcesses()">
+                  Open hiring processes
+                </button>
+              </aside>
+              <p *ngIf="assessmentProcessCheckFailed" class="help">
+                Hiring process usage could not be checked. Direct invitations below provide access
+                only to this assessment.
+              </p>
               <form class="recruiter-form" (ngSubmit)="invite()">
+                <h3>Add &amp; invite</h3>
+                <p class="help">
+                  This invitation is for this assessment only. It does not enrol the candidate in a
+                  hiring process.
+                </p>
+                <p class="help">
+                  New candidates are saved to your pool. Existing email addresses reuse the saved
+                  profile without changing its details.
+                </p>
                 <div class="field-pair">
                   <label
                     >Candidate name<input
@@ -509,6 +559,24 @@
                       autocomplete="off"
                   /></label>
                 </div>
+                <div class="field-pair">
+                  <label
+                    >Skills (optional)<input
+                      name="candidateSkills"
+                      [(ngModel)]="candidateSkills"
+                      maxlength="500"
+                      placeholder="Java, Angular, SQL" /></label
+                  ><label
+                    >Experience in years (optional)<input
+                      type="number"
+                      name="candidateExperience"
+                      [(ngModel)]="candidateExperience"
+                      min="0"
+                      max="60"
+                      step="0.1"
+                      placeholder="Not provided"
+                  /></label>
+                </div>
                 <label
                   >Invitation expiry (your local time)<input
                     type="datetime-local"
@@ -519,7 +587,7 @@
                     >Allow enough time after the scheduled start for the full assessment.</small
                   ></label
                 ><button [disabled]="busy">
-                  {{ busy ? 'Creating...' : 'Generate invitation' }}
+                  {{ busy ? 'Creating...' : 'Add & invite' }}
                 </button>
               </form>
             </section>
@@ -573,15 +641,21 @@
             </section>
             <section class="panel">
               <div class="heading">
-                <h2>Candidates</h2>
-                <span class="pill">{{ candidates.length }} invited</span>
+                <h2>Assessment invitations</h2>
+                <span class="pill">{{ candidates.length }} invitations</span>
               </div>
+              <p class="help">
+                Each row is a separate invitation. The same candidate can have a standalone
+                invitation and invitations through hiring processes; their attempts and results
+                remain separate.
+              </p>
               <p *ngIf="!candidates.length" class="empty-state">No invitations yet.</p>
               <div class="candidate-table" *ngIf="candidates.length">
                 <table>
                   <thead>
                     <tr>
                       <th scope="col">Candidate</th>
+                      <th scope="col">Invitation source</th>
                       <th scope="col">Status</th>
                       <th scope="col">Rating / recommendation</th>
                       <th scope="col">Actions</th>
@@ -596,6 +670,29 @@
                           >Submitted {{ c.submittedAt | date: 'short' }}</small
                         ><small *ngIf="!c.submittedAt"
                           >Invite expires {{ c.expiresAt | date: 'short' }}</small
+                        >
+                        <small *ngIf="c.invitedAt"
+                          >Invited {{ c.invitedAt | date: 'medium' }}</small
+                        >
+                        <details class="invitation-reference">
+                          <summary>Invitation {{ c.invitationId | slice: 0 : 8 }}</summary>
+                          <code>{{ c.invitationId }}</code
+                          ><small *ngIf="c.sessionId">Submission {{ c.sessionId }}</small>
+                        </details>
+                      </td>
+                      <td class="invitation-source">
+                        <span
+                          class="source-badge"
+                          [class.process-source]="c.source === 'HIRING_PROCESS'"
+                          >{{
+                            c.source === 'HIRING_PROCESS'
+                              ? 'Hiring process'
+                              : 'Standalone assessment'
+                          }}</span
+                        >
+                        <small *ngIf="c.processTitle">{{ c.processTitle }}</small>
+                        <small *ngIf="c.roundNumber"
+                          >Round {{ c.roundNumber }} of {{ c.totalRounds }}</small
                         >
                       </td>
                       <td>

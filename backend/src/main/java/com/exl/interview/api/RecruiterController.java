@@ -80,7 +80,63 @@ public class RecruiterController {
         long createdAt
     ) {}
 
-    public record InvitationInput(String candidateName, String candidateEmail, Long expiresAt) {}
+    public record InvitationInput(
+        String candidateName,
+        String candidateEmail,
+        Long expiresAt,
+        String skills,
+        Double experience
+    ) {
+        public InvitationInput(String candidateName, String candidateEmail, Long expiresAt) {
+            this(candidateName, candidateEmail, expiresAt, null, null);
+        }
+    }
+
+    record PoolProfile(String id, String name, String email) {}
+
+    PoolProfile ensurePoolCandidate(
+        String owner,
+        String candidateName,
+        String candidateEmail,
+        String skills,
+        Double experience
+    ) {
+        String name = text(candidateName, 120, "Candidate name"),
+            email = email(candidateEmail);
+        String tags = skills == null ? "" : skills.trim();
+        if (tags.length() > 500) throw bad("Skills must be at most 500 characters");
+        if (
+            experience != null &&
+            (!Double.isFinite(experience) || experience < 0 || experience > 60)
+        ) throw bad("Experience must be between 0 and 60 years");
+        db.queryForObject("SELECT id FROM recruiters WHERE id=? FOR UPDATE", String.class, owner);
+        var existing = db.queryForList(
+            "SELECT id,name,email FROM candidate_pool WHERE recruiter_id=? AND email=?",
+            owner,
+            email
+        );
+        if (!existing.isEmpty()) {
+            var row = existing.getFirst();
+            return new PoolProfile(
+                (String) row.get("id"),
+                (String) row.get("name"),
+                (String) row.get("email")
+            );
+        }
+        String id = UUID.randomUUID().toString();
+        db.update(
+            "INSERT INTO candidate_pool(id,recruiter_id,name,email,skills,experience,created_at) VALUES(?,?,?,?,?,?,?)",
+            id,
+            owner,
+            name,
+            email,
+            tags,
+            experience,
+            now()
+        );
+        staff.audit(owner, "CANDIDATE_ADDED", id);
+        return new PoolProfile(id, name, email);
+    }
 
     public record RegenerateInput(Long expiresAt) {}
 
@@ -104,7 +160,13 @@ public class RecruiterController {
         Integer score,
         String recommendation,
         String evaluatorName,
-        Long evaluatedAt
+        Long evaluatedAt,
+        long invitedAt,
+        String source,
+        String processId,
+        String processTitle,
+        Integer roundNumber,
+        Integer totalRounds
     ) {}
 
     public record Submission(
@@ -428,6 +490,22 @@ public class RecruiterController {
             .orElseThrow(() -> fail(HttpStatus.NOT_FOUND, "Interview not found"));
     }
 
+    @GetMapping("/interviews/{id}/processes")
+    public Map<String, Object> assessmentProcesses(
+        @RequestHeader(value = "Authorization", required = false) String h,
+        @PathVariable String id
+    ) {
+        String owner = auth(h);
+        interview(id, owner);
+        long count = db.queryForObject(
+            "SELECT COUNT(DISTINCT p.id) FROM hiring_processes p JOIN hiring_rounds r ON r.process_id=p.id WHERE r.interview_id=? AND p.recruiter_id=?",
+            Long.class,
+            id,
+            owner
+        );
+        return Map.of("count", count);
+    }
+
     private List<Interview> interviewsFor(String owner) {
         return db.query(
             "SELECT * FROM interviews WHERE recruiter_id=?",
@@ -497,6 +575,7 @@ public class RecruiterController {
     }
 
     @PostMapping("/interviews/{id}/invitations")
+    @org.springframework.transaction.annotation.Transactional
     public InvitationResult invite(
         @RequestHeader(value = "Authorization", required = false) String h,
         @PathVariable String id,
@@ -511,6 +590,9 @@ public class RecruiterController {
             input.expiresAt() <=
                 Math.max(now(), interview.scheduledAt()) + interview.durationSeconds() * 1000L
         ) throw bad("Invitation expiry must allow the full assessment after its scheduled start");
+        var profile = ensurePoolCandidate(auth(h), name, email, input.skills(), input.experience());
+        name = profile.name();
+        email = profile.email();
         byte[] bytes = new byte[24];
         random.nextBytes(bytes);
         String code = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes),
@@ -619,7 +701,7 @@ public class RecruiterController {
     ) {
         interview(id, auth(h));
         return db.query(
-            "SELECT i.*,s.state,s.started_at,s.submitted_at,r.score,r.recommendation,r.reviewed_at,CASE WHEN r.session_id IS NULL THEN NULL ELSE COALESCE(e.name,'Legacy reviewer (name not recorded)') END AS evaluator_name FROM invitations i LEFT JOIN sessions s ON s.id=i.session_id LEFT JOIN reviews r ON r.session_id=s.id LEFT JOIN recruiters e ON e.id=r.reviewer WHERE i.interview_id=? ORDER BY i.created_at DESC",
+            "SELECT i.*,s.state,s.started_at,s.submitted_at,r.score,r.recommendation,r.reviewed_at,CASE WHEN r.session_id IS NULL THEN NULL ELSE COALESCE(e.name,'Legacy reviewer (name not recorded)') END AS evaluator_name,hp.id AS process_id,hp.title AS process_title,hr.position+1 AS round_number,(SELECT COUNT(*) FROM hiring_rounds all_rounds WHERE all_rounds.process_id=hp.id) AS total_rounds FROM invitations i LEFT JOIN sessions s ON s.id=i.session_id LEFT JOIN reviews r ON r.session_id=s.id LEFT JOIN recruiters e ON e.id=r.reviewer LEFT JOIN process_attempts pa ON pa.invitation_id=i.id LEFT JOIN hiring_rounds hr ON hr.id=pa.round_id LEFT JOIN hiring_processes hp ON hp.id=hr.process_id WHERE i.interview_id=? ORDER BY i.created_at DESC,i.id",
             (r, n) ->
                 new Candidate(
                     r.getString("id"),
@@ -637,7 +719,13 @@ public class RecruiterController {
                     (Integer) r.getObject("score"),
                     r.getString("recommendation"),
                     r.getString("evaluator_name"),
-                    (Long) r.getObject("reviewed_at")
+                    (Long) r.getObject("reviewed_at"),
+                    r.getLong("created_at"),
+                    r.getString("process_id") == null ? "STANDALONE" : "HIRING_PROCESS",
+                    r.getString("process_id"),
+                    r.getString("process_title"),
+                    r.getString("process_id") == null ? null : r.getInt("round_number"),
+                    r.getString("process_id") == null ? null : r.getInt("total_rounds")
                 ),
             id
         );

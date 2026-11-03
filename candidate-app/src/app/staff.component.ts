@@ -23,6 +23,18 @@ export class StaffComponent implements OnInit {
   account?: Account;
   accounts: Account[] = [];
   assignments: any[] = [];
+  assignmentFilters = { search: '', recruiter: '', reviewer: '', status: 'ALL' };
+  appliedAssignmentFilters = { ...this.assignmentFilters };
+  assignmentPage = 0;
+  assignmentPages = 1;
+  assignmentTotal = 0;
+  assignmentDrafts: Record<string, string> = {};
+  reviewerSearch: Record<string, string> = {};
+  reviewerOptions: Record<string, any[]> = {};
+  processesFor = '';
+  processUsagePage = 0;
+  processUsagePages = 1;
+  assignmentProcesses: any[] = [];
   templateAssignments: any[] = [];
   activity: any[] = [];
   mode: 'login' | 'bootstrap' | 'reset' = 'login';
@@ -129,12 +141,12 @@ export class StaffComponent implements OnInit {
     await this.run(() => this.refresh());
   }
   async refresh() {
-    [this.accounts, this.assignments, this.activity, this.templateAssignments] = await Promise.all([
+    [this.accounts, this.activity, this.templateAssignments] = await Promise.all([
       this.api('/accounts'),
-      this.api('/assignments'),
       this.api('/activity'),
       this.api('/template-assignments'),
     ]);
+    await this.loadAssignments();
   }
   async create() {
     await this.run(async () => {
@@ -178,23 +190,79 @@ export class StaffComponent implements OnInit {
       await this.refresh();
     });
   }
+  async loadAssignments() {
+    const params = new URLSearchParams({
+      ...this.appliedAssignmentFilters,
+      page: String(this.assignmentPage),
+    });
+    const result = await this.api('/assignments/page?' + params);
+    this.assignments = result.items;
+    this.assignmentPage = result.page;
+    this.assignmentPages = result.pages;
+    this.assignmentTotal = result.total;
+    for (const row of this.assignments) {
+      this.assignmentDrafts[row.ID] ??= row.REVIEWER_ID || '';
+    }
+  }
+  async filterAssignments() {
+    await this.run(async () => {
+      this.appliedAssignmentFilters = { ...this.assignmentFilters };
+      this.assignmentPage = 0;
+      await this.loadAssignments();
+    });
+  }
+  async changeAssignmentPage(page: number) {
+    if (page < 0 || page >= this.assignmentPages) return;
+    await this.run(async () => {
+      this.assignmentPage = page;
+      await this.loadAssignments();
+    });
+  }
+  async findReviewers(id: string) {
+    await this.run(async () => {
+      const selected = (this.reviewerOptions[id] || []).find(
+        (r) => r.ID === this.assignmentDrafts[id]
+      );
+      const results = await this.api(
+        '/reviewer-options?search=' + encodeURIComponent(this.reviewerSearch[id] || '')
+      );
+      this.reviewerOptions[id] =
+        selected && !results.some((r: any) => r.ID === selected.ID)
+          ? [selected, ...results]
+          : results;
+    });
+  }
+  optionsFor(row: any) {
+    const options = this.reviewerOptions[row.ID] || [];
+    return row.REVIEWER_ID && !options.some((r: any) => r.ID === row.REVIEWER_ID)
+      ? [{ ID: row.REVIEWER_ID, NAME: row.REVIEWER_NAME, EMAIL: row.REVIEWER_EMAIL }, ...options]
+      : options;
+  }
+  async showProcesses(id: string, page = 0) {
+    await this.run(async () => {
+      const result = await this.api('/assignments/' + id + '/processes?page=' + page);
+      this.assignmentProcesses = result.items;
+      this.processUsagePage = result.page;
+      this.processUsagePages = result.pages;
+      this.processesFor = id;
+    });
+  }
   async assign(id: string, reviewerId: string) {
     await this.run(async () => {
-      try {
-        await this.api('/assignments/' + id, { reviewerId });
-      } catch (e) {
-        this.assignments = this.assignments.map((a) => ({ ...a }));
-        throw e;
+      await this.api('/assignments/' + id, { reviewerId });
+      const row = this.assignments.find((a) => a.ID === id);
+      if (row) {
+        const selected = this.optionsFor(row).find((r: any) => r.ID === reviewerId);
+        row.REVIEWER_ID = reviewerId || null;
+        row.REVIEWER_NAME = selected?.NAME || null;
+        row.REVIEWER_EMAIL = selected?.EMAIL || null;
       }
-      this.assignments = this.assignments.map((a) =>
-        a.ID === id ? { ...a, REVIEWER_ID: reviewerId || null } : a
-      );
-      this.notice = 'Reviewer assignment updated.';
+      this.assignmentDrafts[id] = reviewerId;
+      this.notice = 'Reviewer assignment saved.';
       try {
-        await this.refresh();
+        await this.loadAssignments();
       } catch {
-        this.notice =
-          'Reviewer assignment saved. Refresh to reload the latest account and activity information.';
+        this.notice = 'Reviewer assignment saved. Refresh to reload the latest information.';
       }
     });
   }

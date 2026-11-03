@@ -111,3 +111,80 @@ td {
   min-height: 18px;
   accent-color: #ff6b27;
 }
+
+.staff-navigation,
+.assignment-pagination,
+.assignment-pagination > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.staff-navigation {
+  margin: 24px 0;
+}
+.staff-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #41617b;
+}
+.staff-tabs button {
+  background: transparent;
+  border: 0;
+  border-radius: 6px 6px 0 0;
+  border-bottom: 3px solid transparent;
+  color: #b8cee0;
+}
+.staff-tabs button.active {
+  background: #15344f;
+  color: #ff9a61;
+  border-bottom-color: #ff641a;
+}
+.assignment-filters {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  align-items: end;
+  margin: 24px 0 16px;
+  gap: 12px;
+}
+.assignment-table {
+  min-width: 1000px;
+}
+.assignment-table td {
+  vertical-align: middle;
+}
+.assignment-table td:first-child {
+  min-width: 180px;
+}
+.assignment-table td:nth-child(5) {
+  min-width: 230px;
+}
+.reviewer-picker summary {
+  cursor: pointer;
+}
+.reviewer-picker[open] {
+  display: grid;
+  gap: 10px;
+}
+.reviewer-picker label {
+  margin-top: 12px;
+}
+.reviewer-picker button {
+  margin-top: 8px;
+}
+.unsaved {
+  color: #ffc17b;
+}
+.assignment-pagination {
+  margin-top: 20px;
+}
+@media (max-width: 900px) {
+  .assignment-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 500px) {
+  .assignment-filters {
+    grid-template-columns: 1fr;
+  }
+}

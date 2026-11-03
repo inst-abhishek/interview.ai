@@ -210,6 +210,77 @@ class StaffAccessTest {
     }
 
     @Test
+    void assignmentPageFiltersAndPaginatesWithAdminOnlyReviewerSearch() throws Exception {
+        post("/staff/accounts", admin, create("paged-recruiter@example.com", "RECRUITER"), 200);
+        String recruiter = login("paged-recruiter@example.com");
+        String reviewerId = post(
+            "/staff/accounts",
+            admin,
+            create("paged-reviewer@example.com", "REVIEWER"),
+            200
+        )
+            .path("id")
+            .asText();
+        String first = "";
+        for (int i = 0; i < 11; i++) {
+            String id = post(
+                "/recruiter/interviews",
+                recruiter,
+                Map.of(
+                    "title",
+                    "Paged Java " + i,
+                    "description",
+                    "Role",
+                    "durationMinutes",
+                    30,
+                    "scheduledAt",
+                    0,
+                    "questionIds",
+                    List.of("q1")
+                ),
+                200
+            )
+                .path("id")
+                .asText();
+            if (i == 0) first = id;
+        }
+        var page = get("/staff/assignments/page?search=Paged", admin, 200);
+        assertEquals(11, page.path("total").asInt());
+        assertEquals(10, page.path("items").size());
+        assertEquals(
+            1,
+            get("/staff/assignments/page?search=Paged&page=1", admin, 200).path("items").size()
+        );
+        post("/staff/assignments/" + first, admin, Map.of("reviewerId", reviewerId), 200);
+        assertEquals(
+            1,
+            get("/staff/assignments/page?search=Paged&status=ASSIGNED", admin, 200)
+                .path("total")
+                .asInt()
+        );
+        assertEquals(
+            10,
+            get("/staff/assignments/page?search=Paged&status=UNASSIGNED", admin, 200)
+                .path("total")
+                .asInt()
+        );
+        assertEquals(
+            0,
+            get("/staff/assignments/page?search=%25", admin, 200).path("total").asInt()
+        );
+        assertEquals(1, get("/staff/reviewer-options?search=paged-reviewer", admin, 200).size());
+        get("/staff/assignments/page", recruiter, 403);
+        get("/staff/reviewer-options", recruiter, 403);
+        get("/staff/assignments/" + first + "/processes", recruiter, 403);
+        assertEquals(
+            0,
+            get("/staff/assignments/" + first + "/processes", admin, 200)
+                .path("items")
+                .size()
+        );
+    }
+
+    @Test
     void reviewerOnlySeesAssignedSubmissionsIncludingDirectLinks() throws Exception {
         String recruiterId = post(
             "/staff/accounts",

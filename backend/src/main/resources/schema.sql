@@ -222,3 +222,91 @@ CREATE TABLE IF NOT EXISTS invitation_delivery (
 
 ALTER TABLE recruiters
 ADD COLUMN IF NOT EXISTS template_author BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE TABLE IF NOT EXISTS ai_interview_plans (
+    version VARCHAR(100) PRIMARY KEY,
+    title VARCHAR(300) NOT NULL,
+    definition CLOB NOT NULL,
+    approved_by VARCHAR(80) NOT NULL REFERENCES recruiters (id),
+    approved_at BIGINT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS hiring_processes (
+    id VARCHAR(80) PRIMARY KEY,
+    recruiter_id VARCHAR(80) NOT NULL REFERENCES recruiters (id),
+    title VARCHAR(200) NOT NULL,
+    skip_ai_default BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at BIGINT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS hiring_rounds (
+    id VARCHAR(80) PRIMARY KEY,
+    process_id VARCHAR(80) NOT NULL REFERENCES hiring_processes (id),
+    position INT NOT NULL,
+    kind VARCHAR(30) NOT NULL,
+    title VARCHAR(300) NOT NULL,
+    interview_id VARCHAR(80) REFERENCES interviews (id),
+    plan_version VARCHAR(100) REFERENCES ai_interview_plans (version),
+    plan_snapshot CLOB,
+    reviewer_id VARCHAR(80) REFERENCES recruiters (id),
+    duration_minutes INT NOT NULL,
+    UNIQUE (process_id, position)
+);
+
+CREATE TABLE IF NOT EXISTS process_candidates (
+    id VARCHAR(80) PRIMARY KEY,
+    process_id VARCHAR(80) NOT NULL REFERENCES hiring_processes (id),
+    candidate_id VARCHAR(80) NOT NULL REFERENCES candidate_pool (id),
+    candidate_name VARCHAR(120) NOT NULL,
+    candidate_email VARCHAR(254) NOT NULL,
+    code_hash VARCHAR(64) NOT NULL UNIQUE,
+    encrypted_code CLOB NOT NULL,
+    expires_at BIGINT NOT NULL,
+    on_hold BOOLEAN NOT NULL DEFAULT FALSE,
+    closed BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at BIGINT NOT NULL,
+    UNIQUE (process_id, candidate_email)
+);
+
+CREATE TABLE IF NOT EXISTS process_attempts (
+    id VARCHAR(80) PRIMARY KEY,
+    participant_id VARCHAR(80) NOT NULL REFERENCES process_candidates (id),
+    round_id VARCHAR(80) NOT NULL REFERENCES hiring_rounds (id),
+    state VARCHAR(30) NOT NULL,
+    invitation_id VARCHAR(80) REFERENCES invitations (id),
+    started_at BIGINT,
+    deadline BIGINT,
+    submitted_at BIGINT,
+    revision INT NOT NULL DEFAULT 0,
+    transcript CLOB NOT NULL DEFAULT '[]',
+    review_marks CLOB NOT NULL DEFAULT '[]',
+    review_notes VARCHAR(5000) NOT NULL DEFAULT '',
+    recommendation VARCHAR(20),
+    published_at BIGINT,
+    skipped_at BIGINT,
+    skipped_by VARCHAR(80),
+    skip_reason VARCHAR(1000),
+    UNIQUE (participant_id, round_id)
+);
+
+CREATE TABLE IF NOT EXISTS process_messages (
+    attempt_id VARCHAR(80) NOT NULL REFERENCES process_attempts (id),
+    request_id VARCHAR(80) NOT NULL,
+    created_at BIGINT NOT NULL,
+    PRIMARY KEY (attempt_id, request_id)
+);
+
+CREATE INDEX IF NOT EXISTS process_owner_idx ON hiring_processes (recruiter_id, created_at, id);
+
+CREATE INDEX IF NOT EXISTS process_candidate_idx ON process_candidates (process_id, created_at, id);
+
+CREATE INDEX IF NOT EXISTS process_attempt_state_idx ON process_attempts (state, deadline);
+
+ALTER TABLE process_attempts
+ADD COLUMN IF NOT EXISTS draft_text CLOB NOT NULL DEFAULT '';
+
+ALTER TABLE process_attempts
+ADD COLUMN IF NOT EXISTS draft_revision INT NOT NULL DEFAULT 0;
+
+ALTER TABLE process_attempts
+ADD COLUMN IF NOT EXISTS published_by VARCHAR(80);

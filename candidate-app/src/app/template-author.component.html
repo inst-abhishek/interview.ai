@@ -7,7 +7,8 @@
         <h2>Assessment authoring</h2>
         <p class="help">
           Create versioned assessments manually or with AI assistance. A different reviewer must
-          approve each version.
+          approve each version. Approved templates can be used for standalone assessments or hiring
+          process rounds.
         </p>
       </div>
       <div class="author-top-actions">
@@ -713,7 +714,35 @@ Expected output: {{ t.expected }}</pre>
           </div>
           <p *ngIf="chatgptMessage" class="settings-message" role="status">
             {{ chatgptMessage }}
-          </p></ng-container
+          </p>
+          <section *ngIf="chatgptConnected" aria-label="Local interview demonstration">
+            <h3>Local interview demo</h3>
+            <p class="help">
+              Use this connected account and selected model for preliminary interview demonstrations
+              on this computer. Requests use your ChatGPT allowance. Use test candidates only. This
+              applies to all local hiring processes, stops after backend restart or staff sign-out,
+              and never falls back to the paid API.
+            </p>
+            <p role="status">
+              {{
+                interviewDemoEnabled
+                  ? 'Subscription interview demo enabled'
+                  : 'Subscription interview demo disabled'
+              }}
+            </p>
+            <button
+              type="button"
+              class="secondary"
+              (click)="toggleInterviewDemo()"
+              [disabled]="busy || connectionBusy || (!interviewDemoEnabled && !chatgptModel)"
+            >
+              {{
+                interviewDemoEnabled
+                  ? 'Disable interview demo'
+                  : 'Enable interview demo with my subscription'
+              }}
+            </button>
+          </section></ng-container
         ><ng-container *ngIf="provider === 'api'"
           ><dl>
             <dt>Backend key</dt>

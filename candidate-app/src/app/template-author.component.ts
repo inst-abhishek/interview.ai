@@ -114,6 +114,7 @@ export class TemplateAuthorComponent implements OnInit, OnDestroy {
       this.connectionIssue = '';
       const c = await this.api<any>('/chatgpt');
       this.chatgptConnected = c.connected;
+      this.interviewDemoEnabled = (await this.api<any>('/chatgpt/interview-demo')).enabled;
       this.chatgptEmail = c.email;
       this.chatgptMessage = c.message || '';
       this.chatgptUrl = '';
@@ -140,6 +141,16 @@ export class TemplateAuthorComponent implements OnInit, OnDestroy {
     } finally {
       this.connectionBusy = false;
     }
+  }
+  interviewDemoEnabled = false;
+  async toggleInterviewDemo() {
+    await this.run(async () => {
+      const result = await this.api<any>('/chatgpt/interview-demo', {
+        enabled: !this.interviewDemoEnabled,
+        model: this.chatgptModel,
+      });
+      this.interviewDemoEnabled = result.enabled;
+    });
   }
   async connectChatGpt() {
     if (this.connectionBusy) return;

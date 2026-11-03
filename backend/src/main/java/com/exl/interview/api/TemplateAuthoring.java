@@ -15,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class TemplateAuthoring {
 
     private final ChatGptConnection chatgpt;
+    private final LiveInterviewAi interviewAi;
     private final JdbcTemplate db;
     private final StaffAccess staff;
     private final TemplateCatalogue catalogue;
@@ -33,9 +34,11 @@ public class TemplateAuthoring {
         JavaCodeRunner runner,
         AiTemplateGenerator ai,
         ObjectMapper json,
-        ChatGptConnection chatgpt
+        ChatGptConnection chatgpt,
+        LiveInterviewAi interviewAi
     ) {
         this.chatgpt = chatgpt;
+        this.interviewAi = interviewAi;
         this.db = db;
         this.staff = staff;
         this.catalogue = catalogue;
@@ -223,6 +226,30 @@ public class TemplateAuthoring {
         String owner = auth(h);
         chatgpt.requireLocal(r.getRemoteAddr());
         return chatgpt.status(owner);
+    }
+
+    public record InterviewDemo(boolean enabled, String model) {}
+
+    @GetMapping("/chatgpt/interview-demo")
+    public Map<String, Boolean> interviewDemo(
+        @RequestHeader(value = "Authorization", required = false) String h,
+        jakarta.servlet.http.HttpServletRequest r
+    ) {
+        String owner = auth(h);
+        chatgpt.requireLocal(r.getRemoteAddr());
+        return Map.of("enabled", interviewAi.demoEnabled(owner));
+    }
+
+    @PostMapping("/chatgpt/interview-demo")
+    public Map<String, Boolean> interviewDemo(
+        @RequestHeader(value = "Authorization", required = false) String h,
+        jakarta.servlet.http.HttpServletRequest r,
+        @RequestBody InterviewDemo input
+    ) {
+        String owner = auth(h);
+        chatgpt.requireLocal(r.getRemoteAddr());
+        interviewAi.configureDemo(owner, h, input.enabled(), input.model());
+        return Map.of("enabled", interviewAi.demoEnabled(owner));
     }
 
     @PostMapping("/chatgpt/connect")

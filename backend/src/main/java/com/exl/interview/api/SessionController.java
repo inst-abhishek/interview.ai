@@ -69,8 +69,34 @@ public class SessionController {
         Long reviewedAt,
         String candidateName,
         String candidateEmail,
-        String interviewTitle
+        String interviewTitle,
+        FlowContext flow
     ) {}
+
+    public record FlowContext(
+        String source,
+        String processTitle,
+        Integer roundNumber,
+        Integer totalRounds
+    ) {}
+
+    private FlowContext invitationFlow(String invitationId) {
+        if (invitationId == null) return new FlowContext("LEGACY", null, null, null);
+        var contexts = db.query(
+            "SELECT hp.title,hr.position,(SELECT COUNT(*) FROM hiring_rounds rounds WHERE rounds.process_id=hp.id) AS total_rounds FROM process_attempts pa JOIN hiring_rounds hr ON hr.id=pa.round_id JOIN hiring_processes hp ON hp.id=hr.process_id WHERE pa.invitation_id=?",
+            (r, n) ->
+                new FlowContext(
+                    "HIRING_PROCESS",
+                    r.getString("title"),
+                    r.getInt("position") + 1,
+                    r.getInt("total_rounds")
+                ),
+            invitationId
+        );
+        return contexts.isEmpty()
+            ? new FlowContext("STANDALONE", null, null, null)
+            : contexts.getFirst();
+    }
 
     public record ReviewPage(
         List<ReviewSummary> items,
@@ -115,7 +141,8 @@ public class SessionController {
         String notes,
         String recommendation,
         Long reviewedAt,
-        String templateVersion
+        String templateVersion,
+        FlowContext flow
     ) {}
 
     private record StoredReviewSession(
@@ -385,7 +412,10 @@ public class SessionController {
                 ),
             owner
         );
-        return rows.isEmpty() ? Map.of() : rows.getFirst();
+        if (rows.isEmpty()) return Map.of();
+        var result = new java.util.HashMap<String, Object>(rows.getFirst());
+        result.put("flow", invitationFlow(owner));
+        return result;
     }
 
     private Session require(String id, String owner, boolean lock) {
@@ -700,8 +730,9 @@ public class SessionController {
         args.add(size);
         args.add((long) current * size);
         var items = db.query(
-            "SELECT s.id,s.submitted_at,s.started_at,r.score,r.recommendation,r.reviewed_at,i.candidate_name,i.candidate_email,j.title" +
+            "SELECT s.id,s.submitted_at,s.started_at,r.score,r.recommendation,r.reviewed_at,i.candidate_name,i.candidate_email,j.title,s.invitation_id,hp.title AS process_title,hr.position AS round_position,(SELECT COUNT(*) FROM hiring_rounds rounds WHERE rounds.process_id=hp.id) AS total_rounds" +
                 joins +
+                " LEFT JOIN process_attempts pa ON pa.invitation_id=s.invitation_id LEFT JOIN hiring_rounds hr ON hr.id=pa.round_id LEFT JOIN hiring_processes hp ON hp.id=hr.process_id" +
                 where +
                 " ORDER BY " +
                 order +
@@ -716,7 +747,19 @@ public class SessionController {
                     (Long) r.getObject("reviewed_at"),
                     r.getString("candidate_name"),
                     r.getString("candidate_email"),
-                    r.getString("title")
+                    r.getString("title"),
+                    new FlowContext(
+                        r.getString("invitation_id") == null
+                            ? "LEGACY"
+                            : r.getString("process_title") == null
+                              ? "STANDALONE"
+                              : "HIRING_PROCESS",
+                        r.getString("process_title"),
+                        r.getObject("round_position") == null
+                            ? null
+                            : r.getInt("round_position") + 1,
+                        r.getString("process_title") == null ? null : r.getInt("total_rounds")
+                    )
                 ),
             args.toArray()
         );
@@ -804,7 +847,10 @@ public class SessionController {
             review == null ? null : review.notes(),
             review == null ? null : review.recommendation(),
             review == null ? null : review.reviewedAt(),
-            catalogue.versionForSession(id)
+            catalogue.versionForSession(id),
+            invitationFlow(
+                db.queryForObject("SELECT invitation_id FROM sessions WHERE id=?", String.class, id)
+            )
         );
     }
 

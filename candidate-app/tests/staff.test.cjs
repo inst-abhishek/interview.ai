@@ -35,6 +35,7 @@ function setup(fetch) {
     },
     fetch,
     Date,
+    URLSearchParams,
     console,
   };
   vm.runInNewContext(source, context);
@@ -116,8 +117,13 @@ test('saved reviewer selection survives refresh and can be unassigned', async ()
     }
     if (url.endsWith('/accounts'))
       return ok([{ id: 'reviewer-1', name: 'Reviewer', role: 'REVIEWER', active: true }]);
-    if (url.endsWith('/assignments'))
-      return ok([{ ID: 'job', TITLE: 'Java', REVIEWER_ID: saved || null }]);
+    if (url.includes('/assignments/page?'))
+      return ok({
+        items: [{ ID: 'job', TITLE: 'Java', REVIEWER_ID: saved || null }],
+        page: 0,
+        pages: 1,
+        total: 1,
+      });
     return ok([]);
   });
   await app.refresh();
@@ -149,7 +155,7 @@ test('failed assignment restores the previous saved selection', async () => {
   app.assignments = [previous];
   await app.assign('job', 'replacement');
   assert.equal(app.assignments[0].REVIEWER_ID, 'original');
-  assert.notEqual(app.assignments[0], previous);
+  assert.equal(app.assignments[0], previous);
   assert.match(app.error, /unavailable/);
   assert.equal(app.notice, '');
 });
@@ -164,8 +170,13 @@ test('template approver selection is persisted separately from candidate reviewe
     }
     if (url.endsWith('/template-assignments'))
       return ok([{ VERSION: 'java-v1', REVIEWER_ID: assigned }]);
-    if (url.endsWith('/assignments'))
-      return ok([{ ID: 'interview', REVIEWER_ID: 'candidate-reviewer' }]);
+    if (url.includes('/assignments/page?'))
+      return ok({
+        items: [{ ID: 'interview', REVIEWER_ID: 'candidate-reviewer' }],
+        page: 0,
+        pages: 1,
+        total: 1,
+      });
     return ok([]);
   });
   await app.assignTemplate('java-v1', 'technical-approver');
@@ -183,4 +194,26 @@ test('failed template approver update retains original assignment', async () => 
   assert.equal(app.templateAssignments[0].REVIEWER_ID, 'original');
   assert.match(app.error, /Not allowed/);
   assert.equal(app.notice, '');
+});
+
+test('assignment filters run on backend and pending selections survive pagination', async () => {
+  const calls = [];
+  const { app } = setup(async (url) => {
+    calls.push(url);
+    return ok({
+      items: [{ ID: 'job', REVIEWER_ID: 'saved' }],
+      page: url.includes('page=1') ? 1 : 0,
+      pages: 2,
+      total: 11,
+    });
+  });
+  app.assignmentFilters.search = 'Java';
+  app.assignmentFilters.status = 'UNASSIGNED';
+  await app.filterAssignments();
+  app.assignmentDrafts.job = 'pending';
+  await app.changeAssignmentPage(1);
+  assert.equal(app.assignmentDrafts.job, 'pending');
+  assert.match(calls[0], /search=Java/);
+  assert.match(calls[1], /status=UNASSIGNED/);
+  assert.equal(app.assignmentPage, 1);
 });

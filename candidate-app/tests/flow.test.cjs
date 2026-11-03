@@ -1187,3 +1187,55 @@ test('candidate sign-out revokes access and clears displayed answers', async () 
   assert.equal(Object.keys(app.drafts).length, 0);
   assert.equal(app.questions.length, 0);
 });
+
+test('confirmed submission exits fullscreen after completion without integrity evidence', async () => {
+  const { app, context } = setup();
+  let exits = 0,
+    evidence = 0;
+  context.document.fullscreenElement = {};
+  context.document.exitFullscreen = async () => {
+    exits++;
+    app.onFullscreenChange();
+  };
+  app.captureFlaggedEvidence = async () => {
+    evidence++;
+  };
+  app.step = 'assessment';
+  app.fullscreenRequired = true;
+  app.apply(session('SUBMITTED'));
+  await Promise.resolve();
+  assert.equal(app.completed, true);
+  assert.equal(exits, 1);
+  assert.equal(evidence, 0);
+});
+test('automatic submission exits fullscreen only after server confirmation', async () => {
+  let confirmed = false;
+  const { app, context } = setup(async () => {
+    if (!confirmed) throw Error('offline');
+    return response({ ...session('SUBMITTED'), submissionReason: 'TIME_EXPIRED' });
+  });
+  let exits = 0;
+  context.document.fullscreenElement = {};
+  context.document.exitFullscreen = async () => {
+    exits++;
+  };
+  app.step = 'assessment';
+  app.deadline = Date.now() - 1;
+  app.remainingSeconds = 0;
+  await app.syncExpiredSubmission();
+  assert.equal(exits, 0);
+  confirmed = true;
+  await app.syncExpiredSubmission();
+  assert.equal(exits, 1);
+});
+test('browser fullscreen exit rejection preserves submitted confirmation', async () => {
+  const { app, context } = setup();
+  context.document.fullscreenElement = {};
+  context.document.exitFullscreen = async () => {
+    throw Error('browser restriction');
+  };
+  app.apply(session('SUBMITTED'));
+  await Promise.resolve();
+  assert.equal(app.completed, true);
+  assert.match(app.message, /submitted successfully/);
+});

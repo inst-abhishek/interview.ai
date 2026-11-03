@@ -250,3 +250,14 @@ test('recruiter evaluation opens a compact summary and back preserves interview 
   assert.equal(app.candidates.length, 1);
   assert.equal(app.showInterviewForm, true);
 });
+
+test('hiring processes is the default and assessment usage is checked on selection', async () => {
+  const { app } = setup(async (url) => response(url.endsWith('/processes') ? { count: 2 } : []));
+  assert.equal(app.tab, 'processes');
+  assert.equal(app.processWorkspaceOpened, true);
+  await app.selectInterview({ id: 'assessment', scheduledAt: Date.now(), durationSeconds: 3600 });
+  assert.equal(app.assessmentProcessCount, 2);
+  assert.equal(app.assessmentProcessCheckFailed, false);
+  app.openHiringProcesses();
+  assert.equal(app.tab, 'processes');
+});

@@ -127,9 +127,10 @@
           class="secondary"
           type="button"
           (click)="selectPage()"
+          title="Applies to candidates on the current page"
           [disabled]="busy || !candidates.length"
         >
-          Toggle this page</button
+          {{ allOnPageSelected ? 'Deselect all' : 'Select all' }}</button
         ><button
           class="secondary"
           type="button"
@@ -200,8 +201,8 @@
   <section class="panel">
     <h2>Invite selected candidates</h2>
     <p class="help">
-      Choose a scheduled interview. The preview identifies candidates already invited to that
-      interview. They will be skipped without changing their existing links or answers.
+      Choose a scheduled assessment. The preview identifies candidates already invited to that
+      assessment. They will be skipped without changing their existing links or answers.
     </p>
     <p *ngIf="!emailAvailable" class="help">
       Email is not configured. Generate invitations and copy individual links or download a CSV for
@@ -210,13 +211,13 @@
     <form (ngSubmit)="reviewInvitations()" class="pool-form">
       <div class="pool-grid">
         <label
-          >Scheduled interview<select
+          >Scheduled assessment<select
             name="bulkInterview"
             [(ngModel)]="interviewId"
             (ngModelChange)="setExpiry()"
             required
           >
-            <option value="">Choose an interview</option>
+            <option value="">Choose an assessment</option>
             <option *ngFor="let j of interviews" [value]="j.id">
               {{ j.title }} &middot; {{ j.scheduledAt | date: 'medium' }}
             </option>

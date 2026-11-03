@@ -1,3 +1,4 @@
+import { HiringProcessComponent } from './hiring-process.component';
 import { CandidatePoolComponent } from './candidate-pool.component';
 import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
@@ -28,6 +29,12 @@ type Candidate = {
   recommendation: string | null;
   evaluatorName?: string | null;
   evaluatedAt?: number | null;
+  invitedAt?: number;
+  source?: 'STANDALONE' | 'HIRING_PROCESS';
+  processId?: string | null;
+  processTitle?: string | null;
+  roundNumber?: number | null;
+  totalRounds?: number | null;
 };
 type Invitation = {
   invitationId: string;
@@ -68,7 +75,13 @@ type EvaluationSummary = Omit<Submission, 'questions' | 'answers' | 'state'> & {
 @Component({
   selector: 'exl-recruiter',
   standalone: true,
-  imports: [CommonModule, FormsModule, TemplateCatalogueComponent, CandidatePoolComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    TemplateCatalogueComponent,
+    CandidatePoolComponent,
+    HiringProcessComponent,
+  ],
   templateUrl: './recruiter.component.html',
   styleUrls: ['./recruiter.component.css'],
 })
@@ -86,7 +99,25 @@ export class RecruiterComponent implements OnInit {
   password = '';
   setupCode = '';
   poolInterviewId = '';
-  tab: 'interviews' | 'questions' | 'templates' | 'pool' = 'interviews';
+  processWorkspaceOpened = true;
+  tab: 'interviews' | 'questions' | 'templates' | 'pool' | 'processes' = 'processes';
+  assessmentProcessCount = 0;
+  assessmentProcessCheckFailed = false;
+  openHiringProcesses() {
+    this.processWorkspaceOpened = true;
+    this.tab = 'processes';
+  }
+  private async checkAssessmentProcesses() {
+    this.assessmentProcessCount = 0;
+    this.assessmentProcessCheckFailed = false;
+    if (!this.selected) return;
+    try {
+      this.assessmentProcessCount =
+        (await this.api<{ count: number }>(`/interviews/${this.selected.id}/processes`)).count || 0;
+    } catch {
+      this.assessmentProcessCheckFailed = true;
+    }
+  }
   interviews: Interview[] = [];
   questions: Question[] = [];
   selected?: Interview;
@@ -108,12 +139,15 @@ export class RecruiterComponent implements OnInit {
   questionSearch = '';
   kindFilter = '';
   candidateName = '';
+  candidateSkills = '';
+  candidateExperience: number | null = null;
   candidateEmail = '';
   expiresAt = this.localDate(Date.now() + 86400000);
   invitation?: Invitation;
   regenerating?: Candidate;
   replacementExpiry = '';
   evaluationSummary?: EvaluationSummary;
+  evaluationSource = '';
   evaluationSubmittedAt: number | null = null;
   score = 3;
   notes = '';
@@ -220,11 +254,20 @@ export class RecruiterComponent implements OnInit {
       await this.refresh();
       if (this.selected)
         this.candidates = await this.api<Candidate[]>(`/interviews/${this.selected.id}/candidates`);
+      await this.checkAssessmentProcesses();
     });
   }
+  async openProcessInterview(id: string) {
+    const interview = this.interviews.find((item) => item.id === id);
+    if (!interview) return;
+    this.tab = 'interviews';
+    await this.selectInterview(interview);
+  }
+
   async selectInterview(item: Interview) {
     await this.run(async () => {
       this.selected = item;
+      await this.checkAssessmentProcesses();
       this.regenerating = undefined;
       this.candidates = [];
       this.submission = undefined;
@@ -358,8 +401,12 @@ export class RecruiterComponent implements OnInit {
       this.invitation = await this.api(`/interviews/${this.selected!.id}/invitations`, {
         candidateName: this.candidateName,
         candidateEmail: this.candidateEmail,
+        skills: this.candidateSkills,
+        experience: this.candidateExperience,
         expiresAt,
       });
+      this.candidateSkills = '';
+      this.candidateExperience = null;
       this.candidateName = '';
       this.candidateEmail = '';
       try {
@@ -454,6 +501,15 @@ export class RecruiterComponent implements OnInit {
       const summary = await this.api<EvaluationSummary>(
         '/submissions/' + c.sessionId + '/evaluation-summary'
       );
+      this.evaluationSource =
+        c.source === 'HIRING_PROCESS'
+          ? 'Hiring process: ' +
+            c.processTitle +
+            ' ? Round ' +
+            c.roundNumber +
+            ' of ' +
+            c.totalRounds
+          : 'Standalone assessment';
       this.evaluationSummary = summary;
       this.evaluationSubmittedAt = c.submittedAt;
       this.submission = { ...summary, state: 'SUBMITTED', questions: [], answers: [] };

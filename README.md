@@ -16,6 +16,35 @@ Recent changes include the main-database assessment catalogue, role-specific tem
 
 ## Quick start
 
+## Optional AI preliminary interviews and multiple rounds
+
+Recruiter navigation is **Hiring processes → Candidates → Assessments → Assessment templates → Question bank**, with Hiring processes as the default. Assessments support **Invite to standalone assessment** for a single assessment outside a hiring process. When an assessment is used in a process, the invitation form reminds the recruiter to use Hiring processes for AI and round progression, with a direct navigation action. Standalone invitations do not enrol candidates into a process.
+
+The assessment's **Assessment invitations** list shows each invitation separately, including its source (**Standalone assessment** or **Hiring process**), process name and round where applicable, invitation date and reference. Multiple rows for the same email represent separate invitations/attempts; their results and history are retained.
+
+Both standalone interviews and hiring processes offer **Select from pool** and **Add & invite**. Name and email are required; skills and experience are optional (decimal years supported). New invitees are saved to the recruiter's candidate pool. An existing email reuses the saved profile without overwriting its name, skills or experience. Missing experience remains “Not provided”; zero means an explicitly entered zero years. Invalid invitations do not create new profiles. Hiring-process duplicates keep the original invitation.
+
+Recruiters can use **Hiring processes** to arrange an optional text AI preliminary interview followed by one to five existing assessments. Normal standalone assessment invitations remain available.
+
+The recruiter process selector uses backend title search and pagination (20 processes per page). Candidate progress is a compact paginated table (10 per page) with backend name/email search. Invitation links are fetched only when **Share invitation** is opened. **Details & actions** reveals round history, review/skip controls and feedback for one candidate. AI invitation policy and bulk skip live under **Process settings**. The page uses a single Refresh action and no nested candidate scrollbar.
+
+1. The recruiter selects **Add an optional AI preliminary round** and optionally specifies a technical focus. No preliminary-plan approval is required. Three role-focused opening questions cover implementation, troubleshooting and design trade-offs, with at most one AI clarification per topic and a human scoring rubric.
+2. The administrator assigns a reviewer to the first assessment. That assignment also controls the process's AI preliminary review queue.
+3. The recruiter creates a hiring process, orders its scheduled assessments, and optionally enables the AI preliminary step. Candidates are selected from the recruiter-owned candidate pool and receive a private process link for manual sharing.
+4. The candidate consents and answers technical questions in a timed text conversation. AI can ask one clarification per approved topic. Answers and unfinished drafts are saved; the server closes the round at its deadline.
+5. The assigned reviewer uses **AI round reviews** to read the conversation and score the rubric. Notes are optional. AI does not score candidates or make hiring decisions.
+6. After published feedback, the recruiter explicitly selects **Invite next assessment**. Each assessment keeps its own timer, submission and published evaluation; publication never automatically advances a candidate.
+
+**Recruiter control:** skip AI for one candidate at any stage, or skip it for all invited candidates, including candidates on other pages. The bulk action can also apply to future invitations when explicitly selected. A separate future-invitation setting can restore AI for new candidates. Skipping retains existing conversation and review records and makes the next assessment ready for an explicit invitation.
+
+For a **manager demonstration on this computer**, open **Template authoring → AI connection → Manage connection**, connect ChatGPT, choose a model, and select **Enable interview demo with my subscription**. The same account can then support template authoring and local preliminary interview demonstrations. Use test candidates. The switch explicitly uses that staff member's plan allowance for all local hiring processes; it is held only in memory and must be enabled again after backend restart. Sign-out, access revocation or disconnect prevents further demo requests. Other staff cannot replace an active demo owner. Disable the demo before using the API provider. No automatic paid API fallback occurs while subscription demo mode is selected.
+
+The API key remains optional. Without subscription demo mode, live interviews require the configured `OPENAI_API_KEY` and `INTERVIEW_AI_ENABLED=true`, with API access and billing available separately. Subscription demo mode is restricted to requests from this computer; it is not a hosted candidate service. Provider failures retain submitted answers and offer an explicit retry. This initial interview is text only. Invitations are shared manually. Pausing or closing a process blocks new rounds and AI interaction, but does not revoke an already-issued standalone assessment link.
+
+Restart the backend after updating to create the additional process tables in the existing database. Existing assessment records are retained.
+
+For the candidate-screen connection manager during a local demo, set `INTERVIEW_CANDIDATE_AI_DEMO=true` (enabled in the main VS Code launch). Click the interviewer status on the candidate journey, connect ChatGPT directly, refresh, choose a model and select **Use subscription for interviewer**. This manager is visible only on loopback requests. No application staff sign-in is required. OAuth state and the connection are scoped to the active process invitation; OAuth credentials remain on the backend. For API-only operation set `INTERVIEW_CANDIDATE_AI_DEMO=false`, disable the subscription demo, configure the backend API key and restart; the candidate manager is then hidden.
+
 ### Requirements
 
 - Java 21 and Maven 3.9+ on PATH.
@@ -241,4 +270,8 @@ This is a local proof of concept. Native Windows integrity monitoring, continuou
 
 From the repository root, run `npm ci` to install the pinned formatting tools, then `npm run format` to format Java, Angular, JavaScript, JSON, XML, Markdown and SQL files. Use `npm run format:check` to check formatting without changing files. The application dependencies remain in `candidate-app`; its existing install/build commands are unchanged.
 
-Java and XML use four-space indentation. Angular TypeScript, templates, styles and JSON use two spaces, with the Angular template parser for HTML. SQL schema files use a dedicated SQL formatter. VS Code workspace settings enable format-on-save through the recommended Prettier extension, including its Java and XML plugins. Install the recommended extensions when opening the workspace. Build output, dependencies, local environment files, database files and recordings are excluded. Existing PowerShell scripts and properties files retain their language-specific formatting.
+Java and XML use four-space indentation. Angular TypeScript, templates, styles and JSON use two spaces, with the Angular template parser for HTML. SQL schema files use a dedicated SQL formatter. Automatic format-on-save is disabled. Use Format Document or the formatting commands when needed; the recommended Prettier extension supports the configured Java and XML plugins. Install the recommended extensions when opening the workspace. Build output, dependencies, local environment files, database files and recordings are excluded. Existing PowerShell scripts and properties files retain their language-specific formatting.
+
+Invitation context is shown as **Standalone assessment** or **Hiring process**, with the process title and round number on candidate and reviewer assessment screens. Admin assessment assignments show the hiring processes using that assessment; their reviewer covers both invitation sources. Templates are reusable content, not standalone or process invitations. Older shared-code sessions show that their source was not recorded.
+
+Admin candidate review assignments use a searchable table with backend pagination (10 assessments per page). Filter by assessment, recruiter, reviewer or assignment status. Open the reviewer selector, search active reviewers, then select **Save** to apply a change. Process usage expands on demand with pagination; unsaved reviewer selections stay available across assignment pages.

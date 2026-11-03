@@ -210,6 +210,21 @@ export class TemplateCatalogueComponent implements OnInit {
     this.definition = undefined;
     this.error = '';
   }
+  async approveAiPlan() {
+    if (!this.activeTemplate || this.busy) return;
+    this.busy = true;
+    this.error = '';
+    try {
+      await this.api('/review/ai-plans/' + this.activeTemplate.version + '/approve', {});
+      this.notice =
+        'AI preliminary plan approved. Recruiters can now choose it in a hiring process.';
+    } catch (error) {
+      this.error = error instanceof Error ? error.message : String(error);
+    } finally {
+      this.busy = false;
+    }
+  }
+
   async approve(t: Template) {
     if (this.busy) return;
     this.busy = true;
