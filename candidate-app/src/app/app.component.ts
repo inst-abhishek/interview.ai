@@ -10,6 +10,13 @@ import { JavaCodeComponent } from './java-code.component';
 declare const ImageCapture: new (track: MediaStreamTrack) => { grabFrame(): Promise<ImageBitmap> };
 type Status = 'pending' | 'passed' | 'failed';
 type Check = { key: string; label: string; detail: string; status: Status };
+type MonitoringToastKey =
+  | 'camera-required'
+  | 'camera-disconnected'
+  | 'camera-blurry'
+  | 'tab-switch'
+  | 'camera-monitor-unavailable';
+type MonitoringToast = { key: MonitoringToastKey; id: number; message: string };
 type Question = { id: string; kind: string; text: string; choices: string[] };
 type Session = {
   id: string;
@@ -196,6 +203,17 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
   evidenceRetentionDays = 30;
   private pendingFocusEvent?: 'TAB_HIDDEN' | 'WINDOW_BLUR';
   private focusCaptureTimer?: ReturnType<typeof setTimeout>;
+  monitoringToasts: MonitoringToast[] = [];
+  private toastTimers = new Map<MonitoringToastKey, ReturnType<typeof setTimeout>>();
+  private nextToastId = 0;
+  private focusLossPending = false;
+  private cameraMonitorTimer?: ReturnType<typeof setInterval>;
+  private cameraPreview?: HTMLVideoElement;
+  private cameraCanvas?: HTMLCanvasElement;
+  private cameraBlurSamples = 0;
+  private cameraSharpSamples = 0;
+  private cameraBlurred = false;
+  private checkingCameraFrame = false;
   checks: Check[] = [
     { key: 'camera', label: 'Webcam', detail: 'Request camera stream', status: 'pending' },
     {
@@ -222,9 +240,15 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
   microphone?: MediaStream;
   screen?: MediaStream;
   get cameraGranted() {
+    const track = this.camera?.getVideoTracks()[0];
     return (
       this.checks.find((c) => c.key === 'camera')?.status === 'passed' &&
-      Boolean(this.camera?.getVideoTracks().some((track) => track.readyState === 'live'))
+      Boolean(
+        track &&
+        track.readyState === 'live' &&
+        track.enabled !== false &&
+        track.muted !== true
+      )
     );
   }
   get allPassed() {
@@ -852,7 +876,22 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
   }
   private readonly onVisibilityChange = () => {
     if (this.step !== 'assessment' || !this.sessionId || this.completed) return;
-    if (document.visibilityState === 'hidden') this.queueFocusEvidence('TAB_HIDDEN');
+    if (document.visibilityState === 'hidden') {
+      this.focusLossPending = true;
+      this.showMonitoringToast(
+        'tab-switch',
+        'Tab switching detected. Please stay on the interview screen.'
+      );
+      this.queueFocusEvidence('TAB_HIDDEN');
+    } else if (this.focusLossPending) {
+      this.showMonitoringToast(
+        'tab-switch',
+        'Tab switching detected. Please stay on the interview screen.',
+        false,
+        true
+      );
+      this.focusLossPending = false;
+    }
   };
   private readonly onFullscreenChange = () => {
     if (this.step !== 'assessment' || !this.sessionId || this.completed) return;
@@ -869,15 +908,211 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
     void this.captureFlaggedEvidence('FULLSCREEN_EXIT');
   };
   private readonly onWindowBlur = () => {
-    if (this.step === 'assessment' && this.sessionId && !this.completed)
+    if (this.step === 'assessment' && this.sessionId && !this.completed) {
+      this.focusLossPending = true;
+      this.showMonitoringToast(
+        'tab-switch',
+        'Tab switching detected. Please stay on the interview screen.'
+      );
       this.queueFocusEvidence('WINDOW_BLUR');
+    }
   };
   private readonly onWindowFocus = () => {
+    if (this.focusLossPending && document.visibilityState !== 'hidden') {
+      this.showMonitoringToast(
+        'tab-switch',
+        'Tab switching detected. Please stay on the interview screen.',
+        false,
+        true
+      );
+      this.focusLossPending = false;
+    }
     if (this.pendingFocusEvent !== 'WINDOW_BLUR' || document.visibilityState === 'hidden') return;
     if (this.focusCaptureTimer) clearTimeout(this.focusCaptureTimer);
     this.focusCaptureTimer = undefined;
     this.pendingFocusEvent = undefined;
   };
+  private showMonitoringToast(
+    key: MonitoringToastKey,
+    message: string,
+    persistent = false,
+    refresh = false
+  ) {
+    if (this.monitoringToasts.some((toast) => toast.key === key) && !refresh) return;
+    const previousTimer = this.toastTimers.get(key);
+    if (previousTimer) clearTimeout(previousTimer);
+    this.toastTimers.delete(key);
+    const toast = { key, id: ++this.nextToastId, message };
+    this.monitoringToasts = this.monitoringToasts.filter((item) => item.key !== key);
+    this.monitoringToasts = [...this.monitoringToasts, toast];
+    if (!persistent) {
+      const timer = setTimeout(() => {
+        this.monitoringToasts = this.monitoringToasts.filter((item) => item.id !== toast.id);
+        this.toastTimers.delete(key);
+      }, 6000);
+      this.toastTimers.set(key, timer);
+    }
+  }
+  private clearMonitoringToast(key: MonitoringToastKey) {
+    const timer = this.toastTimers.get(key);
+    if (timer) clearTimeout(timer);
+    this.toastTimers.delete(key);
+    this.monitoringToasts = this.monitoringToasts.filter((toast) => toast.key !== key);
+  }
+  private notifyCameraUnavailable(disabled: boolean) {
+    if (this.step !== 'assessment' || this.completed) return;
+    this.setCheck('camera', 'failed', 'Camera stream interrupted');
+    this.resetCameraBlurWarning();
+    if (disabled) {
+      this.clearMonitoringToast('camera-disconnected');
+      this.showMonitoringToast(
+        'camera-required',
+        'Camera access is required throughout the interview.',
+        true
+      );
+    } else {
+      this.clearMonitoringToast('camera-required');
+      this.showMonitoringToast(
+        'camera-disconnected',
+        'Camera disconnected. Please enable your camera.',
+        true
+      );
+    }
+  }
+  private checkCameraHealth() {
+    if (this.step !== 'assessment' || this.completed) return;
+    const track = this.camera?.getVideoTracks()[0];
+    if (!track || track.readyState !== 'live' || track.muted === true) {
+      this.notifyCameraUnavailable(false);
+      return;
+    }
+    if (track.enabled === false) {
+      this.notifyCameraUnavailable(true);
+      return;
+    }
+    this.clearMonitoringToast('camera-required');
+    this.clearMonitoringToast('camera-disconnected');
+    if (this.checks.find((check) => check.key === 'camera')?.status !== 'passed')
+      this.setCheck('camera', 'passed', 'Stream active');
+    this.checkCameraBlur();
+  }
+  private startCameraMonitoring() {
+    this.stopCameraMonitoring();
+    if (this.step !== 'assessment' || this.completed || !this.camera) return;
+    const video = document.createElement('video');
+    video.muted = true;
+    video.playsInline = true;
+    video.srcObject = this.camera;
+    this.cameraPreview = video;
+    this.cameraCanvas = document.createElement('canvas');
+    this.cameraCanvas.width = 160;
+    this.cameraCanvas.height = 120;
+    void video
+      .play()
+      .then(() => this.clearMonitoringToast('camera-monitor-unavailable'))
+      .catch(() => {
+        this.showMonitoringToast(
+          'camera-monitor-unavailable',
+          'Camera image quality could not be monitored in this browser.',
+          true
+        );
+      });
+    this.cameraMonitorTimer = setInterval(() => this.checkCameraHealth(), 1200);
+    this.checkCameraHealth();
+  }
+  private checkCameraBlur() {
+    const video = this.cameraPreview;
+    const canvas = this.cameraCanvas;
+    if (
+      this.checkingCameraFrame ||
+      !video ||
+      !canvas ||
+      video.readyState < 2 ||
+      !video.videoWidth ||
+      !video.videoHeight
+    )
+      return;
+    this.checkingCameraFrame = true;
+    try {
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      if (!context) throw new Error('Canvas 2D context is unavailable');
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+      const grayscale = new Uint8Array(canvas.width * canvas.height);
+      let sum = 0;
+      for (let i = 0, pixel = 0; i < data.length; i += 4, pixel++) {
+        const gray = (data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114) / 1000;
+        grayscale[pixel] = gray;
+        sum += gray;
+      }
+      const mean = sum / grayscale.length;
+      let luminanceVariance = 0;
+      for (const gray of grayscale) luminanceVariance += (gray - mean) ** 2;
+      luminanceVariance /= grayscale.length;
+      if (luminanceVariance < 64) return;
+
+      let laplacianSum = 0;
+      let laplacianSquareSum = 0;
+      let samples = 0;
+      for (let y = 1; y < canvas.height - 1; y += 2) {
+        for (let x = 1; x < canvas.width - 1; x += 2) {
+          const index = y * canvas.width + x;
+          const laplacian =
+            grayscale[index - canvas.width] +
+            grayscale[index + canvas.width] +
+            grayscale[index - 1] +
+            grayscale[index + 1] -
+            4 * grayscale[index];
+          laplacianSum += laplacian;
+          laplacianSquareSum += laplacian * laplacian;
+          samples++;
+        }
+      }
+      const variance = laplacianSquareSum / samples - (laplacianSum / samples) ** 2;
+      if (variance < 45) {
+        this.cameraBlurSamples++;
+        this.cameraSharpSamples = 0;
+        if (this.cameraBlurSamples >= 3 && !this.cameraBlurred) {
+          this.cameraBlurred = true;
+          this.showMonitoringToast(
+            'camera-blurry',
+            'Camera blur detected. Please adjust your camera.',
+            true
+          );
+        }
+      } else {
+        this.cameraBlurSamples = 0;
+        this.cameraSharpSamples++;
+        if (this.cameraBlurred && this.cameraSharpSamples >= 2) this.resetCameraBlurWarning();
+      }
+    } catch {
+      this.showMonitoringToast(
+        'camera-monitor-unavailable',
+        'Camera image quality could not be monitored in this browser.',
+        true
+      );
+    } finally {
+      this.checkingCameraFrame = false;
+    }
+  }
+  private resetCameraBlurWarning() {
+    this.cameraBlurSamples = 0;
+    this.cameraSharpSamples = 0;
+    this.cameraBlurred = false;
+    this.clearMonitoringToast('camera-blurry');
+  }
+  private stopCameraMonitoring() {
+    if (this.cameraMonitorTimer) clearInterval(this.cameraMonitorTimer);
+    this.cameraMonitorTimer = undefined;
+    if (this.cameraPreview) {
+      this.cameraPreview.pause();
+      this.cameraPreview.srcObject = null;
+    }
+    this.cameraPreview = undefined;
+    this.cameraCanvas = undefined;
+    this.checkingCameraFrame = false;
+    this.resetCameraBlurWarning();
+  }
   private queueFocusEvidence(eventType: 'TAB_HIDDEN' | 'WINDOW_BLUR') {
     if (!this.pendingFocusEvent || eventType === 'TAB_HIDDEN') this.pendingFocusEvent = eventType;
     if (this.focusCaptureTimer) clearTimeout(this.focusCaptureTimer);
@@ -913,18 +1148,23 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
     return samples > 0 && (dark / samples > 0.97 || bright / samples > 0.97 || max - min < 3);
   }
   private watch(s: MediaStream, key: 'camera' | 'microphone' | 'screen') {
-    s.getTracks().forEach((t) =>
+    s.getTracks().forEach((t) => {
       t.addEventListener('ended', () => {
         const active =
           key === 'camera' ? this.camera : key === 'screen' ? this.screen : this.microphone;
         if (active === s && !this.completed && !this.destroying) {
           this.setCheck(key, 'failed', `${key} stream stopped`);
           this.message = `Monitoring interrupted: ${key} stopped. Restore access before continuing.`;
+          if (key === 'camera') this.notifyCameraUnavailable(false);
           if (key === 'camera' || key === 'screen')
             this.captureFlaggedEvidence(key === 'camera' ? 'CAMERA_STOPPED' : 'SCREEN_STOPPED');
         }
-      })
-    );
+      });
+      if (key === 'camera') {
+        t.addEventListener('mute', () => this.checkCameraHealth());
+        t.addEventListener('unmute', () => this.checkCameraHealth());
+      }
+    });
   }
   private async captureFlaggedEvidence(
     eventType:
@@ -1031,6 +1271,7 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
             this.setCheck(key, 'failed', 'Camera permission and an active webcam are required');
             this.message =
               'Camera access is required to continue. Allow camera permission and retry device checks.';
+            if (this.step === 'assessment') this.notifyCameraUnavailable(true);
           } else {
             this.setCheck(key, 'failed', 'Permission or device unavailable');
           }
@@ -1043,6 +1284,7 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
       } catch {
         this.setCheck('service', 'failed', 'Start backend on port 8080');
       }
+      if (this.step === 'assessment' && !this.completed) this.startCameraMonitoring();
     } finally {
       this.busy = false;
     }
@@ -1131,7 +1373,10 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
         s.submissionReason === 'TIME_EXPIRED'
           ? 'Time expired. Your saved answers were submitted automatically.'
           : 'Assessment submitted successfully.';
-    } else this.persistProgress();
+    } else {
+      this.persistProgress();
+      this.startCameraMonitoring();
+    }
   }
   private get progressKey() {
     return `assessmentProgress:${this.sessionId}`;
@@ -1533,6 +1778,10 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
     }
   }
   private releaseStreams() {
+    this.stopCameraMonitoring();
+    this.clearMonitoringToast('camera-required');
+    this.clearMonitoringToast('camera-disconnected');
+    this.clearMonitoringToast('camera-monitor-unavailable');
     const streams = [this.camera, this.microphone, this.screen];
     this.camera = undefined;
     this.microphone = undefined;
@@ -1550,6 +1799,9 @@ export class AppComponent implements OnDestroy, OnInit, AfterViewInit {
     window.removeEventListener('blur', this.onWindowBlur);
     window.removeEventListener('focus', this.onWindowFocus);
     if (this.focusCaptureTimer) clearTimeout(this.focusCaptureTimer);
+    for (const timer of this.toastTimers.values()) clearTimeout(timer);
+    this.toastTimers.clear();
+    this.monitoringToasts = [];
     this.clearEvidencePreview();
     this.releaseMedia();
   }

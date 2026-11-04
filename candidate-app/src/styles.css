@@ -232,6 +232,24 @@ button:disabled {
   margin-bottom: 15px;
   border-radius: 12px;
 }
+.monitoring-toast-stack {
+  position: fixed;
+  z-index: 10000;
+  top: 84px;
+  right: 24px;
+  display: grid;
+  gap: 10px;
+  width: min(420px, calc(100vw - 32px));
+}
+.monitoring-toast {
+  padding: 14px 18px;
+  border: 1px solid #e59b36;
+  border-radius: 10px;
+  background: #422b14;
+  color: #fff0d6;
+  box-shadow: 0 8px 26px rgb(0 0 0 / 28%);
+  font-weight: 650;
+}
 .question {
   margin: 20px 0;
 }

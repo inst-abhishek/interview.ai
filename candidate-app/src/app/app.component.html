@@ -44,6 +44,11 @@
       </button></ng-container
     >
   </header>
+  <div class="monitoring-toast-stack" *ngIf="monitoringToasts.length" aria-live="assertive">
+    <div class="monitoring-toast" *ngFor="let warning of monitoringToasts" role="alert">
+      {{ warning.message }}
+    </div>
+  </div>
   <div
     class="layout"
     [class.reviewer-layout]="!!reviewerToken"
